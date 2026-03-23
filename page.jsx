@@ -1,7 +1,6 @@
 "use client";
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import { motion } from "framer-motion";
 import { jsPDF } from "jspdf";
 import {
   Home,
@@ -165,6 +164,7 @@ function SignaturePad({ value, onChange, label }) {
     canvas.style.height = `${height}px`;
 
     const ctx = canvas.getContext("2d");
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(ratio, ratio);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
@@ -215,15 +215,18 @@ function SignaturePad({ value, onChange, label }) {
 
   return (
     <div className="space-y-2">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Label>{label}</Label>
         <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={clear}>
-          <RefreshCw className="h-4 w-4 mr-2" /> Effacer
+          <RefreshCw className="h-4 w-4 mr-2" />
+          Effacer
         </Button>
       </div>
+
       <div className="rounded-2xl border bg-white overflow-hidden">
         <canvas
           ref={canvasRef}
+          style={{ touchAction: "pan-y" }}
           onMouseDown={(e) => {
             const p = getPos(e);
             start(p.x, p.y);
@@ -235,11 +238,11 @@ function SignaturePad({ value, onChange, label }) {
           onMouseUp={end}
           onMouseLeave={end}
           onTouchStart={(e) => {
-            e.preventDefault();
             const p = getPos(e);
             start(p.x, p.y);
           }}
           onTouchMove={(e) => {
+            if (!drawing.current) return;
             e.preventDefault();
             const p = getPos(e);
             draw(p.x, p.y);
@@ -264,7 +267,7 @@ const CheckCard = ({ roomId, sectionKey, check, updateCheck, addPhoto, removePho
         </Badge>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <div className="space-y-2">
           <Label>État</Label>
           <Select
@@ -301,7 +304,8 @@ const CheckCard = ({ roomId, sectionKey, check, updateCheck, addPhoto, removePho
 
       <div className="space-y-3">
         <Label className="flex items-center gap-2">
-          <Camera className="h-4 w-4" /> Photos
+          <Camera className="h-4 w-4" />
+          Photos
         </Label>
         <Input
           type="file"
@@ -312,6 +316,7 @@ const CheckCard = ({ roomId, sectionKey, check, updateCheck, addPhoto, removePho
             e.target.files && addPhoto(roomId, sectionKey, check.id, e.target.files)
           }
         />
+
         {!!check.photos.length && (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
             {check.photos.map((photo, index) => (
@@ -350,7 +355,7 @@ const SectionEditor = ({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col md:flex-row gap-2">
+      <div className="flex flex-col sm:flex-row gap-2">
         <Input
           value={newLabel}
           onChange={(e) => setNewLabel(e.target.value)}
@@ -365,7 +370,8 @@ const SectionEditor = ({
             setNewLabel("");
           }}
         >
-          <Plus className="h-4 w-4 mr-2" /> Ajouter
+          <Plus className="h-4 w-4 mr-2" />
+          Ajouter
         </Button>
       </div>
 
@@ -401,7 +407,7 @@ export default function EtatDesLieuxVillaLuxe() {
   const setInspection = activeInspection === "Entrée" ? setEntryInspection : setExitInspection;
 
   useEffect(() => {
-    const saved = localStorage.getItem("villa-luxe-edl-v1");
+    const saved = localStorage.getItem("villa-luxe-edl-v2");
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
@@ -416,7 +422,7 @@ export default function EtatDesLieuxVillaLuxe() {
 
   useEffect(() => {
     localStorage.setItem(
-      "villa-luxe-edl-v1",
+      "villa-luxe-edl-v2",
       JSON.stringify({ entryInspection, exitInspection, brandName, villaReference, allowGuestMode })
     );
     setSaveNotice("Sauvegardé localement");
@@ -716,26 +722,33 @@ export default function EtatDesLieuxVillaLuxe() {
       doc.text("Signature locataire", margin + 220, y + 72);
     }
 
-    doc.save(`etat-des-lieux-${activeInspection.toLowerCase()}-${villaReference.toLowerCase().replace(/\s+/g, "-")}.pdf`);
+    doc.save(
+      `etat-des-lieux-${activeInspection.toLowerCase()}-${villaReference
+        .toLowerCase()
+        .replace(/\s+/g, "-")}.pdf`
+    );
   };
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[radial-gradient(circle_at_top,#f8fafc,#eef2ff_45%,#ffffff)] p-4 md:p-8">
+    <div className="min-h-dvh w-full overflow-x-hidden touch-pan-y bg-[radial-gradient(circle_at_top,#f8fafc,#eef2ff_45%,#ffffff)] p-3 md:p-8">
       <div className="mx-auto max-w-7xl space-y-6">
-        <motion.div initial={{ opacity: 0, y: 18 }} animate={{ opacity: 1, y: 0 }}>
+        <div>
           <Card className="rounded-[32px] border-0 shadow-2xl bg-white">
-            <CardContent className="p-6 md:p-8">
-              <div className="grid xl:grid-cols-[1.65fr_1fr] gap-6 items-start">
+            <CardContent className="p-5 md:p-8">
+              <div className="grid grid-cols-1 2xl:grid-cols-[1.65fr_1fr] gap-6 items-start">
                 <div className="space-y-4">
                   <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600">
-                    <Sparkles className="h-4 w-4" /> Version très haut de gamme — conciergerie premium
+                    <Sparkles className="h-4 w-4" />
+                    Version très haut de gamme — conciergerie premium
                   </div>
+
                   <div>
                     <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-950">
                       État des lieux luxe avec signatures, comparaison entrée/sortie et expérience mobile
                     </h1>
                     <p className="mt-3 max-w-3xl text-slate-600 text-base md:text-lg">
-                      Une base haut de gamme pensée pour des villas premium : parcours fluide, photos, réserves détaillées, mode locataire, signatures tactiles, sauvegarde locale et rapport PDF élégant.
+                      Une base haut de gamme pensée pour des villas premium : parcours fluide, photos,
+                      réserves détaillées, mode locataire, signatures tactiles, sauvegarde locale et rapport PDF élégant.
                     </p>
                   </div>
                 </div>
@@ -747,18 +760,21 @@ export default function EtatDesLieuxVillaLuxe() {
                       <p className="text-2xl font-semibold">{stats.total}</p>
                     </CardContent>
                   </Card>
+
                   <Card className="rounded-3xl shadow-sm bg-white">
                     <CardContent className="p-4">
                       <p className="text-sm text-slate-500">Photos</p>
                       <p className="text-2xl font-semibold">{stats.photos}</p>
                     </CardContent>
                   </Card>
+
                   <Card className="rounded-3xl shadow-sm bg-white">
                     <CardContent className="p-4">
                       <p className="text-sm text-slate-500">Réserves</p>
                       <p className="text-2xl font-semibold">{stats.reserves}</p>
                     </CardContent>
                   </Card>
+
                   <Card className="rounded-3xl shadow-sm bg-white">
                     <CardContent className="p-4">
                       <p className="text-sm text-slate-500">Évolutions sortie</p>
@@ -769,14 +785,15 @@ export default function EtatDesLieuxVillaLuxe() {
               </div>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
 
-        <div className="grid xl:grid-cols-[1.05fr_2fr] gap-6 items-start">
+        <div className="grid grid-cols-1 2xl:grid-cols-[1.05fr_2fr] gap-6 items-start">
           <Card className="rounded-[32px] border-0 shadow-xl bg-white">
             <CardHeader>
               <CardTitle className="text-xl">Pilotage premium</CardTitle>
               <CardDescription>Marque, inspection active, sauvegarde et partage locataire</CardDescription>
             </CardHeader>
+
             <CardContent className="space-y-5">
               <div className="space-y-2">
                 <Label>Nom de ta conciergerie</Label>
@@ -792,35 +809,47 @@ export default function EtatDesLieuxVillaLuxe() {
                 <Label>Inspection en cours</Label>
                 <Tabs value={activeInspection} onValueChange={setActiveInspection} className="w-full">
                   <TabsList className="grid grid-cols-2 rounded-2xl h-11 bg-white">
-                    <TabsTrigger value="Entrée" className="rounded-2xl">Entrée</TabsTrigger>
-                    <TabsTrigger value="Sortie" className="rounded-2xl">Sortie</TabsTrigger>
+                    <TabsTrigger value="Entrée" className="rounded-2xl">
+                      Entrée
+                    </TabsTrigger>
+                    <TabsTrigger value="Sortie" className="rounded-2xl">
+                      Sortie
+                    </TabsTrigger>
                   </TabsList>
                 </Tabs>
               </div>
 
-              <div className="flex items-center justify-between rounded-2xl border px-4 py-3">
+              <div className="flex items-center justify-between rounded-2xl border px-4 py-3 gap-4">
                 <div>
                   <p className="font-medium text-slate-900">Mode locataire autorisé</p>
-                  <p className="text-sm text-slate-500">Permet de partager un lien pour consultation / commentaires</p>
+                  <p className="text-sm text-slate-500">
+                    Permet de partager un lien pour consultation / commentaires
+                  </p>
                 </div>
                 <Switch checked={allowGuestMode} onCheckedChange={setAllowGuestMode} />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Button className="rounded-2xl" variant="secondary" onClick={duplicateEntryToExit}>
-                  <Copy className="h-4 w-4 mr-2" /> Dupliquer entrée → sortie
+                  <Copy className="h-4 w-4 mr-2" />
+                  Dupliquer entrée → sortie
                 </Button>
+
                 <Button className="rounded-2xl" variant="outline" onClick={copyGuestLink} disabled={!allowGuestMode}>
-                  <Share2 className="h-4 w-4 mr-2" /> Copier lien locataire
+                  <Share2 className="h-4 w-4 mr-2" />
+                  Copier lien locataire
                 </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <Button className="rounded-2xl h-11" onClick={exportPdf}>
-                  <Download className="h-4 w-4 mr-2" /> Export PDF
+                  <Download className="h-4 w-4 mr-2" />
+                  Export PDF
                 </Button>
+
                 <div className="rounded-2xl border h-11 flex items-center justify-center text-sm text-slate-600">
-                  <Save className="h-4 w-4 mr-2" /> {saveNotice || "Sauvegarde locale active"}
+                  <Save className="h-4 w-4 mr-2" />
+                  {saveNotice || "Sauvegarde locale active"}
                 </div>
               </div>
 
@@ -830,13 +859,19 @@ export default function EtatDesLieuxVillaLuxe() {
                     Prévisualiser le mode locataire
                   </Button>
                 </DialogTrigger>
+
                 <DialogContent className="max-w-2xl rounded-3xl">
                   <DialogHeader>
                     <DialogTitle>Mode locataire</DialogTitle>
                   </DialogHeader>
                   <div className="space-y-4 text-sm text-slate-600">
-                    <p>Le locataire peut consulter l’état des lieux sur mobile, ajouter ses commentaires de validation et signer directement sur écran tactile.</p>
-                    <p>Dans une version déployée avec base de données, ce lien serait unique par séjour et sécurisé.</p>
+                    <p>
+                      Le locataire peut consulter l’état des lieux sur mobile, ajouter ses commentaires
+                      de validation et signer directement sur écran tactile.
+                    </p>
+                    <p>
+                      Dans une version déployée avec base de données, ce lien serait unique par séjour et sécurisé.
+                    </p>
                   </div>
                 </DialogContent>
               </Dialog>
@@ -849,7 +884,8 @@ export default function EtatDesLieuxVillaLuxe() {
                 <CardTitle className="text-xl">Dossier séjour</CardTitle>
                 <CardDescription>Informations générales, réserves globales et validation</CardDescription>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-4">
+
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Nom du bien</Label>
                   <Input className="rounded-2xl" value={inspection.villa} onChange={(e) => updateInspectionField("villa", e.target.value)} />
@@ -870,6 +906,7 @@ export default function EtatDesLieuxVillaLuxe() {
                     <Label>Date entrée</Label>
                     <Input type="date" className="rounded-2xl" value={inspection.arrivalDate} onChange={(e) => updateInspectionField("arrivalDate", e.target.value)} />
                   </div>
+
                   <div className="space-y-2">
                     <Label>Date sortie</Label>
                     <Input type="date" className="rounded-2xl" value={inspection.departureDate} onChange={(e) => updateInspectionField("departureDate", e.target.value)} />
@@ -903,7 +940,8 @@ export default function EtatDesLieuxVillaLuxe() {
                 <CardTitle className="text-xl">Signatures tactiles</CardTitle>
                 <CardDescription>Très utile sur tablette ou téléphone lors du check-in / check-out</CardDescription>
               </CardHeader>
-              <CardContent className="grid md:grid-cols-2 gap-5">
+
+              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <SignaturePad
                   value={inspection.hostSignature}
                   onChange={(value) => updateInspectionField("hostSignature", value)}
@@ -922,8 +960,9 @@ export default function EtatDesLieuxVillaLuxe() {
                 <CardTitle className="text-xl">Pièces et inventaire détaillé</CardTitle>
                 <CardDescription>Ajoute des pièces personnalisées, structure, mobilier, objets, photos et réserves.</CardDescription>
               </CardHeader>
+
               <CardContent className="space-y-4">
-                <div className="flex flex-col md:flex-row gap-3">
+                <div className="flex flex-col sm:flex-row gap-3">
                   <Input
                     className="rounded-2xl"
                     value={newRoomName}
@@ -931,16 +970,21 @@ export default function EtatDesLieuxVillaLuxe() {
                     placeholder="Ajouter une pièce premium : pool house, cave à vin, salle cinéma..."
                   />
                   <Button className="rounded-2xl" onClick={addCustomRoom}>
-                    <Plus className="h-4 w-4 mr-2" /> Ajouter une pièce
+                    <Plus className="h-4 w-4 mr-2" />
+                    Ajouter une pièce
                   </Button>
                 </div>
               </CardContent>
             </Card>
 
             <Tabs defaultValue={inspection.rooms[0]?.id} className="space-y-4">
-              <TabsList className="flex w-full overflow-x-auto rounded-2xl p-1 h-auto justify-start bg-white">
+              <TabsList className="flex w-full flex-wrap gap-2 rounded-2xl p-1 h-auto justify-start bg-white">
                 {inspection.rooms.map((room) => (
-                  <TabsTrigger key={room.id} value={room.id} className="rounded-2xl whitespace-nowrap">
+                  <TabsTrigger
+                    key={room.id}
+                    value={room.id}
+                    className="rounded-2xl whitespace-normal text-left"
+                  >
                     {room.name}
                   </TabsTrigger>
                 ))}
@@ -953,10 +997,13 @@ export default function EtatDesLieuxVillaLuxe() {
                       <CardTitle className="text-2xl">{room.name}</CardTitle>
                       <CardDescription>Contrôle de la structure, du mobilier et commentaires de pièce</CardDescription>
                     </CardHeader>
+
                     <CardContent>
                       <Accordion type="multiple" defaultValue={["structure", "items", "notes"]} className="space-y-4">
                         <AccordionItem value="structure" className="border rounded-3xl px-4">
-                          <AccordionTrigger className="text-base font-semibold">Structure de la pièce</AccordionTrigger>
+                          <AccordionTrigger className="text-base font-semibold">
+                            Structure de la pièce
+                          </AccordionTrigger>
                           <AccordionContent>
                             <SectionEditor
                               room={room}
@@ -971,7 +1018,9 @@ export default function EtatDesLieuxVillaLuxe() {
                         </AccordionItem>
 
                         <AccordionItem value="items" className="border rounded-3xl px-4">
-                          <AccordionTrigger className="text-base font-semibold">Mobilier et objets</AccordionTrigger>
+                          <AccordionTrigger className="text-base font-semibold">
+                            Mobilier et objets
+                          </AccordionTrigger>
                           <AccordionContent>
                             <SectionEditor
                               room={room}
@@ -986,7 +1035,9 @@ export default function EtatDesLieuxVillaLuxe() {
                         </AccordionItem>
 
                         <AccordionItem value="notes" className="border rounded-3xl px-4">
-                          <AccordionTrigger className="text-base font-semibold">Commentaire global de pièce</AccordionTrigger>
+                          <AccordionTrigger className="text-base font-semibold">
+                            Commentaire global de pièce
+                          </AccordionTrigger>
                           <AccordionContent>
                             <Textarea
                               className="min-h-[120px] rounded-2xl mt-2"
@@ -1013,8 +1064,11 @@ export default function EtatDesLieuxVillaLuxe() {
             <Card className="rounded-[32px] border-0 shadow-xl bg-white">
               <CardHeader>
                 <CardTitle className="text-xl">Comparatif intelligent entrée / sortie</CardTitle>
-                <CardDescription>Utile pour identifier rapidement les changements et préparer une retenue ou une discussion avec le locataire.</CardDescription>
+                <CardDescription>
+                  Utile pour identifier rapidement les changements et préparer une retenue ou une discussion avec le locataire.
+                </CardDescription>
               </CardHeader>
+
               <CardContent>
                 {deltas.length ? (
                   <div className="space-y-3">
