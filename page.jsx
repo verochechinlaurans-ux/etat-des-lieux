@@ -2,93 +2,52 @@
 
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import { jsPDF } from "jspdf";
-import {
-  Home,
-  Camera,
-  Plus,
-  Trash2,
-  Download,
-  Sparkles,
-  BedDouble,
-  Bath,
-  ChefHat,
-  Trees,
-  RefreshCw,
-  Save,
-  Share2,
-  Copy,
-} from "lucide-react";
+import { Camera, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
 
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Switch } from "@/components/ui/switch";
-
-const conditionOptions = ["Neuf", "Très bon", "Bon", "Usure légère", "Abîmé"];
-
-const conditionWeight = {
-  Neuf: 0,
-  "Très bon": 1,
-  Bon: 2,
-  "Usure légère": 3,
-  Abîmé: 4,
-};
-
-const villaTemplate = [
+const roomsTemplate = [
   {
     id: "entree",
     name: "Entrée",
-    icon: Home,
-    structure: ["Porte d’entrée", "Murs", "Sol", "Plafond", "Éclairage", "Interphone / alarme"],
-    items: ["Console", "Miroir", "Clés", "Télécommandes", "Décoration"],
+    structure: ["Porte d’entrée", "Murs", "Sol", "Plafond", "Éclairage"],
+    items: ["Console", "Miroir", "Clés", "Télécommandes"],
   },
   {
     id: "salon",
     name: "Salon",
-    icon: Home,
-    structure: ["Murs", "Sol", "Plafond", "Baies vitrées", "Rideaux", "Éclairage"],
-    items: ["Canapé", "Fauteuils", "Table basse", "Tapis", "Télévision", "Objets décoratifs"],
+    structure: ["Murs", "Sol", "Plafond", "Baies vitrées", "Rideaux"],
+    items: ["Canapé", "Fauteuils", "Table basse", "Tapis", "Télévision"],
   },
   {
     id: "cuisine",
     name: "Cuisine",
-    icon: ChefHat,
-    structure: ["Murs", "Sol", "Plafond", "Plan de travail", "Éclairage", "Fenêtres"],
-    items: ["Réfrigérateur", "Four", "Plaques", "Lave-vaisselle", "Vaisselle", "Petit électroménager"],
+    structure: ["Murs", "Sol", "Plafond", "Plan de travail"],
+    items: ["Réfrigérateur", "Four", "Plaques", "Lave-vaisselle", "Vaisselle"],
   },
   {
-    id: "suite",
+    id: "chambre",
     name: "Suite principale",
-    icon: BedDouble,
-    structure: ["Murs", "Sol", "Plafond", "Fenêtres", "Rideaux", "Éclairage"],
-    items: ["Lit", "Matelas", "Linge", "Chevets", "Lampes", "Dressing"],
+    structure: ["Murs", "Sol", "Plafond", "Fenêtres", "Rideaux"],
+    items: ["Lit", "Matelas", "Chevets", "Lampes", "Dressing"],
   },
   {
     id: "sdb",
     name: "Salle de bain",
-    icon: Bath,
-    structure: ["Murs", "Sol", "Plafond", "Ventilation", "Miroirs", "Éclairage"],
-    items: ["Lavabo", "Robinetterie", "Douche / baignoire", "WC", "Linge", "Sèche-cheveux"],
+    structure: ["Murs", "Sol", "Plafond", "Miroirs", "Ventilation"],
+    items: ["Lavabo", "Robinetterie", "Douche / baignoire", "WC"],
   },
   {
     id: "exterieur",
     name: "Extérieurs",
-    icon: Trees,
-    structure: ["Façade", "Terrasse", "Piscine", "Jardin", "Portail", "Éclairage extérieur"],
-    items: ["Transats", "Table extérieure", "Barbecue", "Parasols", "Coussins", "Accessoires piscine"],
+    structure: ["Façade", "Terrasse", "Piscine", "Jardin"],
+    items: ["Transats", "Table extérieure", "Barbecue", "Parasols"],
   },
 ];
 
-function makeChecklist(entries) {
-  return entries.map((label, index) => ({
-    id: `${label}-${index}`,
+const conditionOptions = ["Neuf", "Très bon", "Bon", "Usure légère", "Abîmé"];
+
+function makeChecks(list) {
+  return list.map((label, i) => ({
+    id: `${label}-${i}`,
     label,
     condition: "Bon",
     reserve: "",
@@ -96,19 +55,9 @@ function makeChecklist(entries) {
   }));
 }
 
-function createInspectionRooms() {
-  return villaTemplate.map((room) => ({
-    ...room,
-    structureChecks: makeChecklist(room.structure),
-    itemChecks: makeChecklist(room.items),
-    globalNote: "",
-  }));
-}
-
-function createInspection() {
+function createData() {
   return {
-    createdAt: new Date().toISOString(),
-    villa: "Villa Signature",
+    villa: "LA MASIA DE POUMARET",
     guest: "",
     manager: "",
     arrivalDate: "",
@@ -117,7 +66,13 @@ function createInspection() {
     tenantValidation: "",
     hostSignature: "",
     tenantSignature: "",
-    rooms: createInspectionRooms(),
+    rooms: roomsTemplate.map((room) => ({
+      ...room,
+      structureChecks: makeChecks(room.structure),
+      itemChecks: makeChecks(room.items),
+      globalNote: "",
+      open: false,
+    })),
   };
 }
 
@@ -130,22 +85,7 @@ function toDataUrl(file) {
   });
 }
 
-function sortBySeverity(data) {
-  return [...data].sort((a, b) => conditionWeight[b.condition] - conditionWeight[a.condition]);
-}
-
-function flattenChecks(rooms) {
-  return rooms.flatMap((room) => [
-    ...room.structureChecks.map((check) => ({ ...check, room: room.name, group: "Structure" })),
-    ...room.itemChecks.map((check) => ({ ...check, room: room.name, group: "Mobilier & objets" })),
-  ]);
-}
-
-function signatureToImage(canvas) {
-  return canvas.toDataURL("image/png");
-}
-
-function SignaturePad({ value, onChange, label }) {
+function SignaturePad({ label, value, onChange }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
 
@@ -154,9 +94,8 @@ function SignaturePad({ value, onChange, label }) {
     if (!canvas) return;
 
     const ratio = window.devicePixelRatio || 1;
-    const parent = canvas.parentElement;
-    const width = parent.clientWidth;
-    const height = 160;
+    const width = canvas.parentElement.clientWidth;
+    const height = 140;
 
     canvas.width = width * ratio;
     canvas.height = height * ratio;
@@ -166,11 +105,11 @@ function SignaturePad({ value, onChange, label }) {
     const ctx = canvas.getContext("2d");
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(ratio, ratio);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, height);
     ctx.lineWidth = 2;
     ctx.lineCap = "round";
-    ctx.strokeStyle = "#111827";
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "#111";
 
     if (value) {
       const img = new Image();
@@ -179,74 +118,60 @@ function SignaturePad({ value, onChange, label }) {
     }
   }, [value]);
 
-  const start = (x, y) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+  const getPos = (e) => {
+    const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches?.[0];
+    const x = (touch ? touch.clientX : e.clientX) - rect.left;
+    const y = (touch ? touch.clientY : e.clientY) - rect.top;
+    return { x, y };
+  };
+
+  const start = (e) => {
+    const { x, y } = getPos(e);
+    const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath();
     ctx.moveTo(x, y);
     drawing.current = true;
   };
 
-  const draw = (x, y) => {
+  const move = (e) => {
     if (!drawing.current) return;
-    const canvas = canvasRef.current;
-    const ctx = canvas.getContext("2d");
+    if (e.touches) e.preventDefault();
+    const { x, y } = getPos(e);
+    const ctx = canvasRef.current.getContext("2d");
     ctx.lineTo(x, y);
     ctx.stroke();
-  };
-
-  const getPos = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches?.[0];
-    const clientX = touch ? touch.clientX : e.clientX;
-    const clientY = touch ? touch.clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
   const end = () => {
     if (!drawing.current) return;
     drawing.current = false;
-    onChange(signatureToImage(canvasRef.current));
-  };
-
-  const clear = () => {
-    onChange("");
+    onChange(canvasRef.current.toDataURL("image/png"));
   };
 
   return (
-    <div className="space-y-2">
-      <div className="flex items-center justify-between gap-2">
-        <Label>{label}</Label>
-        <Button type="button" variant="outline" size="sm" className="rounded-xl" onClick={clear}>
-          <RefreshCw className="h-4 w-4 mr-2" />
+    <div style={{ marginTop: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 6 }}>
+        <strong>{label}</strong>
+        <button
+          type="button"
+          onClick={() => onChange("")}
+          style={{ border: "1px solid #ddd", borderRadius: 10, padding: "6px 10px", background: "#fff" }}
+        >
+          <RefreshCw size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
           Effacer
-        </Button>
+        </button>
       </div>
-
-      <div className="rounded-2xl border bg-white overflow-hidden">
+      <div style={{ border: "1px solid #ddd", borderRadius: 16, overflow: "hidden", background: "#fff" }}>
         <canvas
           ref={canvasRef}
-          style={{ touchAction: "pan-y" }}
-          onMouseDown={(e) => {
-            const p = getPos(e);
-            start(p.x, p.y);
-          }}
-          onMouseMove={(e) => {
-            const p = getPos(e);
-            draw(p.x, p.y);
-          }}
+          style={{ display: "block", width: "100%", touchAction: "pan-y" }}
+          onMouseDown={start}
+          onMouseMove={move}
           onMouseUp={end}
           onMouseLeave={end}
-          onTouchStart={(e) => {
-            const p = getPos(e);
-            start(p.x, p.y);
-          }}
-          onTouchMove={(e) => {
-            if (!drawing.current) return;
-            e.preventDefault();
-            const p = getPos(e);
-            draw(p.x, p.y);
-          }}
+          onTouchStart={start}
+          onTouchMove={move}
           onTouchEnd={end}
         />
       </div>
@@ -254,254 +179,125 @@ function SignaturePad({ value, onChange, label }) {
   );
 }
 
-const CheckCard = ({ roomId, sectionKey, check, updateCheck, addPhoto, removePhoto }) => (
-  <Card className="rounded-3xl border-slate-200 shadow-sm bg-white">
-    <CardContent className="p-4 md:p-5 space-y-4">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="font-medium text-slate-950">{check.label}</p>
-          <p className="text-sm text-slate-500">État, réserves détaillées et preuves photo</p>
-        </div>
-        <Badge variant={check.condition === "Abîmé" ? "destructive" : "secondary"}>
-          {check.condition}
-        </Badge>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="space-y-2">
-          <Label>État</Label>
-          <Select
-            value={check.condition}
-            onValueChange={(value) =>
-              updateCheck(roomId, sectionKey, check.id, { condition: value })
-            }
-          >
-            <SelectTrigger className="rounded-2xl">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {conditionOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
-
-        <div className="space-y-2">
-          <Label>Réserve / commentaire</Label>
-          <Textarea
-            className="min-h-[96px] rounded-2xl"
-            value={check.reserve}
-            onChange={(e) =>
-              updateCheck(roomId, sectionKey, check.id, { reserve: e.target.value })
-            }
-            placeholder="Ex. rayure légère, manque 1 verre, angle du meuble marqué..."
-          />
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <Label className="flex items-center gap-2">
-          <Camera className="h-4 w-4" />
-          Photos
-        </Label>
-        <Input
-          type="file"
-          accept="image/*"
-          multiple
-          className="rounded-2xl"
-          onChange={(e) =>
-            e.target.files && addPhoto(roomId, sectionKey, check.id, e.target.files)
-          }
-        />
-
-        {!!check.photos.length && (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-            {check.photos.map((photo, index) => (
-              <div key={index} className="relative rounded-2xl overflow-hidden border bg-slate-50">
-                <img
-                  src={photo}
-                  alt={`${check.label}-${index}`}
-                  className="h-28 w-full object-cover"
-                />
-                <button
-                  type="button"
-                  onClick={() => removePhoto(roomId, sectionKey, check.id, index)}
-                  className="absolute top-2 right-2 rounded-full bg-white/90 p-1.5 shadow"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </CardContent>
-  </Card>
-);
-
-const SectionEditor = ({
-  room,
-  title,
-  sectionKey,
-  updateCheck,
-  addPhoto,
-  removePhoto,
-  addLine,
-}) => {
-  const [newLabel, setNewLabel] = useState("");
-
+function CheckItem({ check, onChange, onAddPhotos, onRemovePhoto }) {
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row gap-2">
-        <Input
-          value={newLabel}
-          onChange={(e) => setNewLabel(e.target.value)}
-          className="rounded-2xl"
-          placeholder={`Ajouter un point dans ${title.toLowerCase()}`}
-        />
-        <Button
-          type="button"
-          className="rounded-2xl"
-          onClick={() => {
-            addLine(room.id, sectionKey, newLabel);
-            setNewLabel("");
-          }}
-        >
-          <Plus className="h-4 w-4 mr-2" />
-          Ajouter
-        </Button>
+    <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, background: "#fff", marginTop: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}>
+        <div>
+          <div style={{ fontWeight: 600 }}>{check.label}</div>
+          <div style={{ fontSize: 13, color: "#6b7280" }}>État, réserve et photos</div>
+        </div>
+        <div style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, background: "#f3f4f6" }}>
+          {check.condition}
+        </div>
       </div>
 
-      <div className="grid gap-4">
-        {room[sectionKey].map((check) => (
-          <CheckCard
-            key={check.id}
-            roomId={room.id}
-            sectionKey={sectionKey}
-            check={check}
-            updateCheck={updateCheck}
-            addPhoto={addPhoto}
-            removePhoto={removePhoto}
-          />
-        ))}
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 6 }}>État</label>
+        <select
+          value={check.condition}
+          onChange={(e) => onChange({ condition: e.target.value })}
+          style={{ width: "100%", border: "1px solid #d1d5db", borderRadius: 12, padding: 10, background: "#fff" }}
+        >
+          {conditionOptions.map((c) => (
+            <option key={c} value={c}>{c}</option>
+          ))}
+        </select>
       </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 6 }}>Réserve / commentaire</label>
+        <textarea
+          value={check.reserve}
+          onChange={(e) => onChange({ reserve: e.target.value })}
+          rows={3}
+          style={{ width: "100%", border: "1px solid #d1d5db", borderRadius: 12, padding: 10, background: "#fff" }}
+        />
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <label style={{ display: "block", fontSize: 14, fontWeight: 500, marginBottom: 6 }}>
+          <Camera size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
+          Photos
+        </label>
+        <input type="file" accept="image/*" multiple onChange={(e) => e.target.files && onAddPhotos(e.target.files)} />
+      </div>
+
+      {check.photos.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+          {check.photos.map((photo, i) => (
+            <div key={i} style={{ position: "relative", borderRadius: 14, overflow: "hidden", border: "1px solid #e5e7eb" }}>
+              <img src={photo} alt="" style={{ width: "100%", height: 120, objectFit: "cover", display: "block" }} />
+              <button
+                type="button"
+                onClick={() => onRemovePhoto(i)}
+                style={{ position: "absolute", top: 8, right: 8, border: 0, borderRadius: 999, background: "rgba(255,255,255,.9)", padding: 6 }}
+              >
+                <Trash2 size={14} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
-};
+}
 
-export default function EtatDesLieuxVillaLuxe() {
-  const [entryInspection, setEntryInspection] = useState(createInspection);
-  const [exitInspection, setExitInspection] = useState(createInspection);
-  const [activeInspection, setActiveInspection] = useState("Entrée");
-  const [brandName, setBrandName] = useState("Conciergerie Signature");
-  const [villaReference, setVillaReference] = useState("LA MASIA DE POUMARET");
-  const [allowGuestMode, setAllowGuestMode] = useState(true);
-  const [saveNotice, setSaveNotice] = useState("");
-  const [shareOpen, setShareOpen] = useState(false);
-  const [newRoomName, setNewRoomName] = useState("");
-
-  const inspection = activeInspection === "Entrée" ? entryInspection : exitInspection;
-  const setInspection = activeInspection === "Entrée" ? setEntryInspection : setExitInspection;
+export default function Page() {
+  const [data, setData] = useState(createData);
 
   useEffect(() => {
-    const saved = localStorage.getItem("villa-luxe-edl-v2");
+    const saved = localStorage.getItem("edl-mobile-simple");
     if (saved) {
       try {
-        const parsed = JSON.parse(saved);
-        if (parsed.entryInspection) setEntryInspection(parsed.entryInspection);
-        if (parsed.exitInspection) setExitInspection(parsed.exitInspection);
-        if (parsed.brandName) setBrandName(parsed.brandName);
-        if (parsed.villaReference) setVillaReference(parsed.villaReference);
-        if (typeof parsed.allowGuestMode === "boolean") setAllowGuestMode(parsed.allowGuestMode);
+        setData(JSON.parse(saved));
       } catch {}
     }
   }, []);
 
   useEffect(() => {
-    localStorage.setItem(
-      "villa-luxe-edl-v2",
-      JSON.stringify({ entryInspection, exitInspection, brandName, villaReference, allowGuestMode })
-    );
-    setSaveNotice("Sauvegardé localement");
-    const t = setTimeout(() => setSaveNotice(""), 1200);
-    return () => clearTimeout(t);
-  }, [entryInspection, exitInspection, brandName, villaReference, allowGuestMode]);
+    localStorage.setItem("edl-mobile-simple", JSON.stringify(data));
+  }, [data]);
 
-  const stats = useMemo(() => {
-    const allChecks = flattenChecks(inspection.rooms);
-    return {
-      total: allChecks.length,
-      photos: allChecks.reduce((sum, c) => sum + c.photos.length, 0),
-      reserves: allChecks.filter((c) => c.reserve.trim()).length + (inspection.generalReserve.trim() ? 1 : 0),
-      damaged: allChecks.filter((c) => c.condition === "Abîmé").length,
-      wear: allChecks.filter((c) => c.condition === "Usure légère").length,
-    };
-  }, [inspection]);
+  const totalPhotos = useMemo(
+    () =>
+      data.rooms.reduce(
+        (sum, room) =>
+          sum +
+          room.structureChecks.reduce((a, c) => a + c.photos.length, 0) +
+          room.itemChecks.reduce((a, c) => a + c.photos.length, 0),
+        0
+      ),
+    [data]
+  );
 
-  const deltas = useMemo(() => {
-    const list = [];
-    entryInspection.rooms.forEach((entryRoom, roomIndex) => {
-      const exitRoom = exitInspection.rooms[roomIndex];
-      if (!exitRoom) return;
-
-      [
-        [entryRoom.structureChecks, exitRoom.structureChecks],
-        [entryRoom.itemChecks, exitRoom.itemChecks],
-      ].forEach(([entryChecks, exitChecks]) => {
-        entryChecks.forEach((entryCheck, index) => {
-          const exitCheck = exitChecks[index];
-          if (!exitCheck) return;
-
-          if (
-            conditionWeight[exitCheck.condition] > conditionWeight[entryCheck.condition] ||
-            exitCheck.reserve.trim()
-          ) {
-            list.push({
-              room: entryRoom.name,
-              label: entryCheck.label,
-              before: entryCheck.condition,
-              after: exitCheck.condition,
-              reserve: exitCheck.reserve,
-            });
-          }
-        });
-      });
-    });
-    return list;
-  }, [entryInspection, exitInspection]);
-
-  const updateInspectionField = (field, value) => {
-    setInspection((prev) => ({ ...prev, [field]: value }));
-  };
-
-  const updateCheck = (roomId, section, checkId, patch) => {
-    setInspection((prev) => ({
+  const updateRoomCheck = (roomId, section, checkId, patch) => {
+    setData((prev) => ({
       ...prev,
       rooms: prev.rooms.map((room) =>
         room.id !== roomId
           ? room
           : {
               ...room,
-              [section]: room[section].map((c) => (c.id === checkId ? { ...c, ...patch } : c)),
+              [section]: room[section].map((check) =>
+                check.id === checkId ? { ...check, ...patch } : check
+              ),
             }
       ),
     }));
   };
 
-  const addPhoto = async (roomId, section, checkId, files) => {
-    const photos = await Promise.all(Array.from(files).map(toDataUrl));
-    setInspection((prev) => ({
+  const addPhotos = async (roomId, section, checkId, files) => {
+    const imgs = await Promise.all(Array.from(files).map(toDataUrl));
+    setData((prev) => ({
       ...prev,
       rooms: prev.rooms.map((room) =>
         room.id !== roomId
           ? room
           : {
               ...room,
-              [section]: room[section].map((c) =>
-                c.id === checkId ? { ...c, photos: [...c.photos, ...photos] } : c
+              [section]: room[section].map((check) =>
+                check.id === checkId ? { ...check, photos: [...check.photos, ...imgs] } : check
               ),
             }
       ),
@@ -509,25 +305,35 @@ export default function EtatDesLieuxVillaLuxe() {
   };
 
   const removePhoto = (roomId, section, checkId, index) => {
-    setInspection((prev) => ({
+    setData((prev) => ({
       ...prev,
       rooms: prev.rooms.map((room) =>
         room.id !== roomId
           ? room
           : {
               ...room,
-              [section]: room[section].map((c) =>
-                c.id === checkId ? { ...c, photos: c.photos.filter((_, i) => i !== index) } : c
+              [section]: room[section].map((check) =>
+                check.id === checkId
+                  ? { ...check, photos: check.photos.filter((_, i) => i !== index) }
+                  : check
               ),
             }
       ),
     }));
   };
 
+  const toggleRoom = (roomId) => {
+    setData((prev) => ({
+      ...prev,
+      rooms: prev.rooms.map((room) =>
+        room.id === roomId ? { ...room, open: !room.open } : room
+      ),
+    }));
+  };
+
   const addLine = (roomId, section, label) => {
     if (!label.trim()) return;
-
-    setInspection((prev) => ({
+    setData((prev) => ({
       ...prev,
       rooms: prev.rooms.map((room) =>
         room.id !== roomId
@@ -549,621 +355,251 @@ export default function EtatDesLieuxVillaLuxe() {
     }));
   };
 
-  const addCustomRoom = () => {
-    if (!newRoomName.trim()) return;
-
-    const room = {
-      id: `custom-${Date.now()}`,
-      name: newRoomName.trim(),
-      icon: Home,
-      structureChecks: makeChecklist(["Murs", "Sol", "Plafond"]),
-      itemChecks: makeChecklist(["Mobilier principal"]),
-      globalNote: "",
-    };
-
-    setInspection((prev) => ({ ...prev, rooms: [...prev.rooms, room] }));
-    setNewRoomName("");
-  };
-
-  const duplicateEntryToExit = () => {
-    setExitInspection(JSON.parse(JSON.stringify(entryInspection)));
-    setSaveNotice("Entrée dupliquée vers sortie");
-    setTimeout(() => setSaveNotice(""), 1200);
-  };
-
-  const copyGuestLink = async () => {
-    const link = `${window.location.origin}${window.location.pathname}?mode=locataire&inspection=${activeInspection.toLowerCase()}`;
-    await navigator.clipboard.writeText(link);
-    setSaveNotice("Lien locataire copié");
-    setTimeout(() => setSaveNotice(""), 1200);
-  };
-
   const exportPdf = () => {
-    const doc = new jsPDF({ unit: "pt", format: "a4" });
-    const pageWidth = doc.internal.pageSize.getWidth();
-    const pageHeight = doc.internal.pageSize.getHeight();
-    const margin = 38;
-    let y = 44;
+    const doc = new jsPDF();
+    let y = 15;
 
-    const ensureSpace = (space = 40) => {
-      if (y + space > pageHeight - margin) {
-        doc.addPage();
-        y = 44;
-      }
-    };
-
-    const writeWrapped = (text, x, size = 11, lineHeight = 15) => {
-      const lines = doc.splitTextToSize(text || "", pageWidth - margin * 2);
-      ensureSpace(lines.length * lineHeight + 8);
-      doc.setFontSize(size);
-      doc.text(lines, x, y);
-      y += lines.length * lineHeight;
-    };
-
-    doc.setFontSize(22);
-    doc.text(`${brandName}`, margin, y);
-    y += 24;
-    doc.setFontSize(18);
-    doc.text(`État des lieux ${activeInspection.toLowerCase()} — ${villaReference}`, margin, y);
-    y += 20;
-    doc.setFontSize(11);
-    doc.text(`Villa : ${inspection.villa || villaReference}`, margin, y);
-    y += 15;
-    doc.text(`Locataire : ${inspection.guest || "-"}`, margin, y);
-    y += 15;
-    doc.text(`Gestionnaire : ${inspection.manager || "-"}`, margin, y);
-    y += 15;
-    doc.text(`Séjour : ${inspection.arrivalDate || "-"} → ${inspection.departureDate || "-"}`, margin, y);
-    y += 22;
-
-    writeWrapped(
-      `Résumé : ${stats.total} contrôles, ${stats.photos} photos, ${stats.reserves} réserve(s), ${stats.wear} usure(s) légère(s), ${stats.damaged} élément(s) abîmé(s).`,
-      margin,
-      11,
-      15
-    );
-    y += 8;
-
-    if (inspection.generalReserve.trim()) {
-      doc.setFontSize(13);
-      ensureSpace(24);
-      doc.text("Réserves générales", margin, y);
-      y += 16;
-      writeWrapped(inspection.generalReserve, margin, 10, 14);
-      y += 4;
-    }
-
-    inspection.rooms.forEach((room) => {
-      ensureSpace(30);
-      doc.setFontSize(15);
-      doc.text(room.name, margin, y);
-      y += 16;
-
-      [
-        { title: "Structure", data: sortBySeverity(room.structureChecks) },
-        { title: "Mobilier & objets", data: sortBySeverity(room.itemChecks) },
-      ].forEach((section) => {
-        ensureSpace(18);
-        doc.setFontSize(12);
-        doc.text(section.title, margin + 6, y);
-        y += 14;
-
-        section.data.forEach((check) => {
-          const line = `• ${check.label} — ${check.condition}${
-            check.reserve ? ` — Réserve : ${check.reserve}` : ""
-          }`;
-          writeWrapped(line, margin + 12, 10, 13);
-
-          if (check.photos?.length) {
-            check.photos.slice(0, 2).forEach((photo) => {
-              ensureSpace(82);
-              try {
-                doc.addImage(photo, "JPEG", margin + 16, y, 72, 54);
-              } catch {
-                try {
-                  doc.addImage(photo, "PNG", margin + 16, y, 72, 54);
-                } catch {}
-              }
-              y += 62;
-            });
-          }
-        });
-      });
-
-      if (room.globalNote?.trim()) {
-        doc.setFontSize(11);
-        ensureSpace(20);
-        doc.text("Note de pièce", margin + 6, y);
-        y += 14;
-        writeWrapped(room.globalNote, margin + 12, 10, 13);
-      }
-
-      y += 8;
-    });
-
-    if (activeInspection === "Sortie" && deltas.length) {
-      ensureSpace(32);
-      doc.setFontSize(14);
-      doc.text("Évolutions constatées entre entrée et sortie", margin, y);
-      y += 18;
-
-      deltas.forEach((delta) => {
-        writeWrapped(
-          `• ${delta.room} — ${delta.label} : ${delta.before} → ${delta.after}${
-            delta.reserve ? ` — ${delta.reserve}` : ""
-          }`,
-          margin + 8,
-          10,
-          13
-        );
-      });
-
-      y += 4;
-    }
-
-    ensureSpace(150);
-    doc.setFontSize(12);
-    doc.text("Validation et signatures", margin, y);
-    y += 18;
-    writeWrapped(inspection.tenantValidation || "Aucun commentaire de validation.", margin, 10, 14);
+    doc.setFontSize(16);
+    doc.text("État des lieux villa", 10, y);
     y += 10;
 
-    if (inspection.hostSignature) {
-      try {
-        doc.addImage(inspection.hostSignature, "PNG", margin, y, 150, 60);
-      } catch {}
-      doc.text("Signature gestionnaire", margin, y + 72);
-    }
+    doc.setFontSize(11);
+    doc.text(`Villa : ${data.villa}`, 10, y); y += 8;
+    doc.text(`Locataire : ${data.guest || "-"}`, 10, y); y += 8;
+    doc.text(`Gestionnaire : ${data.manager || "-"}`, 10, y); y += 8;
+    doc.text(`Séjour : ${data.arrivalDate || "-"} -> ${data.departureDate || "-"}`, 10, y); y += 10;
 
-    if (inspection.tenantSignature) {
-      try {
-        doc.addImage(inspection.tenantSignature, "PNG", margin + 220, y, 150, 60);
-      } catch {}
-      doc.text("Signature locataire", margin + 220, y + 72);
-    }
+    data.rooms.forEach((room) => {
+      if (y > 260) {
+        doc.addPage();
+        y = 15;
+      }
+      doc.setFontSize(13);
+      doc.text(room.name, 10, y);
+      y += 8;
 
-    doc.save(
-      `etat-des-lieux-${activeInspection.toLowerCase()}-${villaReference
-        .toLowerCase()
-        .replace(/\s+/g, "-")}.pdf`
-    );
+      [...room.structureChecks, ...room.itemChecks].forEach((check) => {
+        const line = `${check.label} - ${check.condition}${check.reserve ? ` - ${check.reserve}` : ""}`;
+        const lines = doc.splitTextToSize(line, 180);
+        doc.setFontSize(10);
+        doc.text(lines, 14, y);
+        y += lines.length * 5 + 2;
+      });
+
+      if (room.globalNote) {
+        const lines = doc.splitTextToSize(`Note: ${room.globalNote}`, 180);
+        doc.text(lines, 14, y);
+        y += lines.length * 5 + 3;
+      }
+
+      y += 4;
+    });
+
+    doc.save("etat-des-lieux.pdf");
   };
 
   return (
-    <div className="min-h-dvh w-full overflow-x-hidden touch-pan-y bg-[radial-gradient(circle_at_top,#f8fafc,#eef2ff_45%,#ffffff)] p-3 md:p-8">
-      <div className="mx-auto max-w-7xl space-y-6">
-        <div>
-          <Card className="rounded-[32px] border-0 shadow-2xl bg-white">
-            <CardContent className="p-5 md:p-8">
-              <div className="grid grid-cols-1 2xl:grid-cols-[1.65fr_1fr] gap-6 items-start">
-                <div className="space-y-4">
-                  <div className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-3 py-1 text-sm text-slate-600">
-                    <Sparkles className="h-4 w-4" />
-                    Version très haut de gamme — conciergerie premium
-                  </div>
+    <div style={{ minHeight: "100dvh", background: "#f8fafc", padding: 12 }}>
+      <div style={{ maxWidth: 760, margin: "0 auto" }}>
+        <div style={{ background: "#fff", borderRadius: 24, padding: 16, boxShadow: "0 8px 24px rgba(0,0,0,.06)" }}>
+          <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Version mobile terrain</div>
+          <h1 style={{ fontSize: 28, lineHeight: 1.1, margin: 0 }}>État des lieux mobile</h1>
+          <p style={{ color: "#6b7280" }}>Version simplifiée pour un usage fiable dans la maison.</p>
 
-                  <div>
-                    <h1 className="text-3xl md:text-5xl font-semibold tracking-tight text-slate-950">
-                      État des lieux luxe avec signatures, comparaison entrée/sortie et expérience mobile
-                    </h1>
-                    <p className="mt-3 max-w-3xl text-slate-600 text-base md:text-lg">
-                      Une base haut de gamme pensée pour des villas premium : parcours fluide, photos,
-                      réserves détaillées, mode locataire, signatures tactiles, sauvegarde locale et rapport PDF élégant.
-                    </p>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <Card className="rounded-3xl shadow-sm bg-white">
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-500">Contrôles</p>
-                      <p className="text-2xl font-semibold">{stats.total}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="rounded-3xl shadow-sm bg-white">
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-500">Photos</p>
-                      <p className="text-2xl font-semibold">{stats.photos}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="rounded-3xl shadow-sm bg-white">
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-500">Réserves</p>
-                      <p className="text-2xl font-semibold">{stats.reserves}</p>
-                    </CardContent>
-                  </Card>
-
-                  <Card className="rounded-3xl shadow-sm bg-white">
-                    <CardContent className="p-4">
-                      <p className="text-sm text-slate-500">Évolutions sortie</p>
-                      <p className="text-2xl font-semibold">{deltas.length}</p>
-                    </CardContent>
-                  </Card>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
-        <div className="grid grid-cols-1 2xl:grid-cols-[1.05fr_2fr] gap-6 items-start">
-          <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-            <CardHeader>
-              <CardTitle className="text-xl">Pilotage premium</CardTitle>
-              <CardDescription>Marque, inspection active, sauvegarde et partage locataire</CardDescription>
-            </CardHeader>
-
-            <CardContent className="space-y-5">
-              <div className="space-y-2">
-                <Label>Nom de ta conciergerie</Label>
-                <Input className="rounded-2xl" value={brandName} onChange={(e) => setBrandName(e.target.value)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Référence villa</Label>
-                <Input className="rounded-2xl" value={villaReference} onChange={(e) => setVillaReference(e.target.value)} />
-              </div>
-
-              <div className="space-y-2">
-                <Label>Inspection en cours</Label>
-                <Tabs value={activeInspection} onValueChange={setActiveInspection} className="w-full">
-                  <TabsList className="grid grid-cols-2 rounded-2xl h-11 bg-white">
-                    <TabsTrigger value="Entrée" className="rounded-2xl">
-                      Entrée
-                    </TabsTrigger>
-                    <TabsTrigger value="Sortie" className="rounded-2xl">
-                      Sortie
-                    </TabsTrigger>
-                  </TabsList>
-                </Tabs>
-              </div>
-
-              <div className="flex items-center justify-between rounded-2xl border px-4 py-3 gap-4">
-                <div>
-                  <p className="font-medium text-slate-900">Mode locataire autorisé</p>
-                  <p className="text-sm text-slate-500">
-                    Permet de partager un lien pour consultation / commentaires
-                  </p>
-                </div>
-                <Switch checked={allowGuestMode} onCheckedChange={setAllowGuestMode} />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button className="rounded-2xl" variant="secondary" onClick={duplicateEntryToExit}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Dupliquer entrée → sortie
-                </Button>
-
-                <Button className="rounded-2xl" variant="outline" onClick={copyGuestLink} disabled={!allowGuestMode}>
-                  <Share2 className="h-4 w-4 mr-2" />
-                  Copier lien locataire
-                </Button>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <Button className="rounded-2xl h-11" onClick={exportPdf}>
-                  <Download className="h-4 w-4 mr-2" />
-                  Export PDF
-                </Button>
-
-                <div className="rounded-2xl border h-11 flex items-center justify-center text-sm text-slate-600">
-                  <Save className="h-4 w-4 mr-2" />
-                  {saveNotice || "Sauvegarde locale active"}
-                </div>
-              </div>
-
-              <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-                <DialogTrigger asChild>
-                  <Button variant="outline" className="w-full rounded-2xl">
-                    Prévisualiser le mode locataire
-                  </Button>
-                </DialogTrigger>
-
-                <DialogContent className="max-w-2xl rounded-3xl">
-                  <DialogHeader>
-                    <DialogTitle>Mode locataire</DialogTitle>
-                  </DialogHeader>
-                  <div className="space-y-4 text-sm text-slate-600">
-                    <p>
-                      Le locataire peut consulter l’état des lieux sur mobile, ajouter ses commentaires
-                      de validation et signer directement sur écran tactile.
-                    </p>
-                    <p>
-                      Dans une version déployée avec base de données, ce lien serait unique par séjour et sécurisé.
-                    </p>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </CardContent>
-          </Card>
-
-          <div className="space-y-6">
-            <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl">Dossier séjour</CardTitle>
-                <CardDescription>Informations générales, réserves globales et validation</CardDescription>
-              </CardHeader>
-
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Nom du bien</Label>
-                  <Input className="rounded-2xl" value={inspection.villa} onChange={(e) => updateInspectionField("villa", e.target.value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Locataire</Label>
-                  <Input className="rounded-2xl" value={inspection.guest} onChange={(e) => updateInspectionField("guest", e.target.value)} />
-                </div>
-
-                <div className="space-y-2">
-                  <Label>Gestionnaire / concierge</Label>
-                  <Input className="rounded-2xl" value={inspection.manager} onChange={(e) => updateInspectionField("manager", e.target.value)} />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="space-y-2">
-                    <Label>Date entrée</Label>
-                    <Input type="date" className="rounded-2xl" value={inspection.arrivalDate} onChange={(e) => updateInspectionField("arrivalDate", e.target.value)} />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label>Date sortie</Label>
-                    <Input type="date" className="rounded-2xl" value={inspection.departureDate} onChange={(e) => updateInspectionField("departureDate", e.target.value)} />
-                  </div>
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Réserves générales</Label>
-                  <Textarea
-                    className="min-h-[110px] rounded-2xl"
-                    value={inspection.generalReserve}
-                    onChange={(e) => updateInspectionField("generalReserve", e.target.value)}
-                    placeholder="Ex. éclat sur pierre naturelle, télécommande portail capricieuse, une chaise marquée..."
-                  />
-                </div>
-
-                <div className="space-y-2 md:col-span-2">
-                  <Label>Commentaire de validation du locataire</Label>
-                  <Textarea
-                    className="min-h-[110px] rounded-2xl"
-                    value={inspection.tenantValidation}
-                    onChange={(e) => updateInspectionField("tenantValidation", e.target.value)}
-                    placeholder="Le locataire peut confirmer l’état des lieux ou formuler ses réserves complémentaires."
-                  />
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl">Signatures tactiles</CardTitle>
-                <CardDescription>Très utile sur tablette ou téléphone lors du check-in / check-out</CardDescription>
-              </CardHeader>
-
-              <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <SignaturePad
-                  value={inspection.hostSignature}
-                  onChange={(value) => updateInspectionField("hostSignature", value)}
-                  label="Signature gestionnaire"
-                />
-                <SignaturePad
-                  value={inspection.tenantSignature}
-                  onChange={(value) => updateInspectionField("tenantSignature", value)}
-                  label="Signature locataire"
-                />
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl">Pièces et inventaire détaillé</CardTitle>
-                <CardDescription>Ajoute des pièces personnalisées, structure, mobilier, objets, photos et réserves.</CardDescription>
-              </CardHeader>
-
-              <CardContent className="space-y-4">
-                <div className="flex flex-col sm:flex-row gap-3">
-                  <Input
-                    className="rounded-2xl"
-                    value={newRoomName}
-                    onChange={(e) => setNewRoomName(e.target.value)}
-                    placeholder="Ajouter une pièce premium : pool house, cave à vin, salle cinéma..."
-                  />
-                  <Button className="rounded-2xl" onClick={addCustomRoom}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Ajouter une pièce
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Version mobile : sans Tabs */}
-<div className="block lg:hidden space-y-4">
-  {inspection.rooms.map((room) => (
-    <Card key={room.id} className="rounded-[28px] border-0 shadow-xl bg-white">
-      <CardHeader>
-        <CardTitle className="text-xl">{room.name}</CardTitle>
-        <CardDescription>
-          Contrôle de la structure, du mobilier et commentaires de pièce
-        </CardDescription>
-      </CardHeader>
-
-      <CardContent className="space-y-6">
-        <div className="space-y-3">
-          <h3 className="font-semibold text-slate-900">Structure</h3>
-          <SectionEditor
-            room={room}
-            title="Structure"
-            sectionKey="structureChecks"
-            updateCheck={updateCheck}
-            addPhoto={addPhoto}
-            removePhoto={removePhoto}
-            addLine={addLine}
-          />
-        </div>
-
-        <div className="space-y-3">
-          <h3 className="font-semibold text-slate-900">Mobilier et objets</h3>
-          <SectionEditor
-            room={room}
-            title="Mobilier et objets"
-            sectionKey="itemChecks"
-            updateCheck={updateCheck}
-            addPhoto={addPhoto}
-            removePhoto={removePhoto}
-            addLine={addLine}
-          />
-        </div>
-
-        <div className="space-y-2">
-          <Label>Commentaire global de pièce</Label>
-          <Textarea
-            className="min-h-[120px] rounded-2xl"
-            value={room.globalNote}
-            onChange={(e) =>
-              setInspection((prev) => ({
-                ...prev,
-                rooms: prev.rooms.map((r) =>
-                  r.id === room.id ? { ...r, globalNote: e.target.value } : r
-                ),
-              }))
-            }
-            placeholder="Ex. ambiance générale impeccable, légère usure sur rideau, 2 verres à repositionner..."
-          />
-        </div>
-      </CardContent>
-    </Card>
-  ))}
-</div>
-
-{/* Version desktop : avec Tabs */}
-<div className="hidden lg:block">
-  <Tabs defaultValue={inspection.rooms[0]?.id} className="space-y-4">
-    <TabsList className="flex w-full flex-wrap gap-2 rounded-2xl p-1 h-auto justify-start bg-white">
-      {inspection.rooms.map((room) => (
-        <TabsTrigger
-          key={room.id}
-          value={room.id}
-          className="rounded-2xl whitespace-normal text-left"
-        >
-          {room.name}
-        </TabsTrigger>
-      ))}
-    </TabsList>
-
-    {inspection.rooms.map((room) => (
-      <TabsContent key={room.id} value={room.id} className="space-y-4">
-        <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-          <CardHeader>
-            <CardTitle className="text-2xl">{room.name}</CardTitle>
-            <CardDescription>
-              Contrôle de la structure, du mobilier et commentaires de pièce
-            </CardDescription>
-          </CardHeader>
-
-          <CardContent>
-            <Accordion
-              type="multiple"
-              defaultValue={["structure", "items", "notes"]}
-              className="space-y-4"
-            >
-              <AccordionItem value="structure" className="border rounded-3xl px-4">
-                <AccordionTrigger className="text-base font-semibold">
-                  Structure de la pièce
-                </AccordionTrigger>
-                <AccordionContent>
-                  <SectionEditor
-                    room={room}
-                    title="Structure"
-                    sectionKey="structureChecks"
-                    updateCheck={updateCheck}
-                    addPhoto={addPhoto}
-                    removePhoto={removePhoto}
-                    addLine={addLine}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="items" className="border rounded-3xl px-4">
-                <AccordionTrigger className="text-base font-semibold">
-                  Mobilier et objets
-                </AccordionTrigger>
-                <AccordionContent>
-                  <SectionEditor
-                    room={room}
-                    title="Mobilier et objets"
-                    sectionKey="itemChecks"
-                    updateCheck={updateCheck}
-                    addPhoto={addPhoto}
-                    removePhoto={removePhoto}
-                    addLine={addLine}
-                  />
-                </AccordionContent>
-              </AccordionItem>
-
-              <AccordionItem value="notes" className="border rounded-3xl px-4">
-                <AccordionTrigger className="text-base font-semibold">
-                  Commentaire global de pièce
-                </AccordionTrigger>
-                <AccordionContent>
-                  <Textarea
-                    className="min-h-[120px] rounded-2xl mt-2"
-                    value={room.globalNote}
-                    onChange={(e) =>
-                      setInspection((prev) => ({
-                        ...prev,
-                        rooms: prev.rooms.map((r) =>
-                          r.id === room.id ? { ...r, globalNote: e.target.value } : r
-                        ),
-                      }))
-                    }
-                    placeholder="Ex. ambiance générale impeccable, légère usure sur rideau, 2 verres à repositionner..."
-                  />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
-          </CardContent>
-        </Card>
-      </TabsContent>
-    ))}
-  </Tabs>
-</div>
-
-            <Card className="rounded-[32px] border-0 shadow-xl bg-white">
-              <CardHeader>
-                <CardTitle className="text-xl">Comparatif intelligent entrée / sortie</CardTitle>
-                <CardDescription>
-                  Utile pour identifier rapidement les changements et préparer une retenue ou une discussion avec le locataire.
-                </CardDescription>
-              </CardHeader>
-
-              <CardContent>
-                {deltas.length ? (
-                  <div className="space-y-3">
-                    {deltas.map((delta, index) => (
-                      <div key={index} className="rounded-2xl border p-4 bg-white">
-                        <p className="font-medium text-slate-900">
-                          {delta.room} — {delta.label}
-                        </p>
-                        <p className="text-sm text-slate-600">
-                          {delta.before} → {delta.after}
-                        </p>
-                        {!!delta.reserve && (
-                          <p className="mt-1 text-sm text-slate-500">Réserve : {delta.reserve}</p>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <div className="rounded-2xl border border-dashed p-6 text-sm text-slate-500">
-                    Aucun écart détecté pour le moment entre l’entrée et la sortie.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
+            <div style={{ background: "#f8fafc", borderRadius: 16, padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>Pièces</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{data.rooms.length}</div>
+            </div>
+            <div style={{ background: "#f8fafc", borderRadius: 16, padding: 12 }}>
+              <div style={{ fontSize: 12, color: "#6b7280" }}>Photos</div>
+              <div style={{ fontSize: 24, fontWeight: 700 }}>{totalPhotos}</div>
+            </div>
           </div>
         </div>
+
+        <div style={{ background: "#fff", borderRadius: 24, padding: 16, marginTop: 14, boxShadow: "0 8px 24px rgba(0,0,0,.06)" }}>
+          <h2 style={{ marginTop: 0 }}>Dossier séjour</h2>
+
+          <div style={{ display: "grid", gap: 12 }}>
+            <div>
+              <label>Nom du bien</label>
+              <input value={data.villa} onChange={(e) => setData({ ...data, villa: e.target.value })} style={inputStyle} />
+            </div>
+
+            <div>
+              <label>Locataire</label>
+              <input value={data.guest} onChange={(e) => setData({ ...data, guest: e.target.value })} style={inputStyle} />
+            </div>
+
+            <div>
+              <label>Gestionnaire</label>
+              <input value={data.manager} onChange={(e) => setData({ ...data, manager: e.target.value })} style={inputStyle} />
+            </div>
+
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+              <div>
+                <label>Date entrée</label>
+                <input type="date" value={data.arrivalDate} onChange={(e) => setData({ ...data, arrivalDate: e.target.value })} style={inputStyle} />
+              </div>
+              <div>
+                <label>Date sortie</label>
+                <input type="date" value={data.departureDate} onChange={(e) => setData({ ...data, departureDate: e.target.value })} style={inputStyle} />
+              </div>
+            </div>
+
+            <div>
+              <label>Réserves générales</label>
+              <textarea value={data.generalReserve} onChange={(e) => setData({ ...data, generalReserve: e.target.value })} rows={4} style={inputStyle} />
+            </div>
+
+            <div>
+              <label>Validation locataire</label>
+              <textarea value={data.tenantValidation} onChange={(e) => setData({ ...data, tenantValidation: e.target.value })} rows={4} style={inputStyle} />
+            </div>
+          </div>
+        </div>
+
+        <div style={{ background: "#fff", borderRadius: 24, padding: 16, marginTop: 14, boxShadow: "0 8px 24px rgba(0,0,0,.06)" }}>
+          <h2 style={{ marginTop: 0 }}>Signatures</h2>
+          <SignaturePad label="Signature gestionnaire" value={data.hostSignature} onChange={(v) => setData({ ...data, hostSignature: v })} />
+          <SignaturePad label="Signature locataire" value={data.tenantSignature} onChange={(v) => setData({ ...data, tenantSignature: v })} />
+        </div>
+
+        <div style={{ marginTop: 14 }}>
+          {data.rooms.map((room) => (
+            <div key={room.id} style={{ background: "#fff", borderRadius: 24, padding: 16, marginBottom: 14, boxShadow: "0 8px 24px rgba(0,0,0,.06)" }}>
+              <button
+                type="button"
+                onClick={() => toggleRoom(room.id)}
+                style={{
+                  width: "100%",
+                  textAlign: "left",
+                  background: "transparent",
+                  border: 0,
+                  padding: 0,
+                  fontSize: 22,
+                  fontWeight: 700,
+                }}
+              >
+                {room.name} {room.open ? "−" : "+"}
+              </button>
+
+              {room.open && (
+                <div style={{ marginTop: 14 }}>
+                  <SectionBlock
+                    title="Structure"
+                    items={room.structureChecks}
+                    roomId={room.id}
+                    section="structureChecks"
+                    updateRoomCheck={updateRoomCheck}
+                    addPhotos={addPhotos}
+                    removePhoto={removePhoto}
+                    addLine={addLine}
+                  />
+
+                  <SectionBlock
+                    title="Mobilier et objets"
+                    items={room.itemChecks}
+                    roomId={room.id}
+                    section="itemChecks"
+                    updateRoomCheck={updateRoomCheck}
+                    addPhotos={addPhotos}
+                    removePhoto={removePhoto}
+                    addLine={addLine}
+                  />
+
+                  <div style={{ marginTop: 16 }}>
+                    <label>Commentaire global de pièce</label>
+                    <textarea
+                      rows={4}
+                      value={room.globalNote}
+                      onChange={(e) =>
+                        setData((prev) => ({
+                          ...prev,
+                          rooms: prev.rooms.map((r) =>
+                            r.id === room.id ? { ...r, globalNote: e.target.value } : r
+                          ),
+                        }))
+                      }
+                      style={inputStyle}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <button
+          type="button"
+          onClick={exportPdf}
+          style={{
+            width: "100%",
+            border: 0,
+            borderRadius: 18,
+            background: "#111827",
+            color: "#fff",
+            padding: 14,
+            fontSize: 16,
+            fontWeight: 600,
+            marginBottom: 30,
+          }}
+        >
+          <Download size={16} style={{ verticalAlign: "middle", marginRight: 8 }} />
+          Export PDF
+        </button>
       </div>
     </div>
   );
 }
+
+function SectionBlock({ title, items, roomId, section, updateRoomCheck, addPhotos, removePhoto, addLine }) {
+  const [newLabel, setNewLabel] = useState("");
+
+  return (
+    <div style={{ marginTop: 18 }}>
+      <h3 style={{ marginBottom: 10 }}>{title}</h3>
+
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <input
+          value={newLabel}
+          onChange={(e) => setNewLabel(e.target.value)}
+          placeholder={`Ajouter un point dans ${title.toLowerCase()}`}
+          style={{ ...inputStyle, margin: 0 }}
+        />
+        <button
+          type="button"
+          onClick={() => {
+            addLine(roomId, section, newLabel);
+            setNewLabel("");
+          }}
+          style={{ border: "1px solid #d1d5db", borderRadius: 12, background: "#fff", padding: "10px 12px", whiteSpace: "nowrap" }}
+        >
+          <Plus size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
+          Ajouter
+        </button>
+      </div>
+
+      {items.map((check) => (
+        <CheckItem
+          key={check.id}
+          check={check}
+          onChange={(patch) => updateRoomCheck(roomId, section, check.id, patch)}
+          onAddPhotos={(files) => addPhotos(roomId, section, check.id, files)}
+          onRemovePhoto={(index) => removePhoto(roomId, section, check.id, index)}
+        />
+      ))}
+    </div>
+  );
+}
+
+const inputStyle = {
+  width: "100%",
+  marginTop: 6,
+  border: "1px solid #d1d5db",
+  borderRadius: 12,
+  padding: 10,
+  background: "#fff",
+  boxSizing: "border-box",
+};
