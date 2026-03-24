@@ -210,7 +210,7 @@ function SignaturePad({ label, value, onChange }) {
             display: "block",
             width: "100%",
             height: "180px",
-            touchAction: "none",
+
           }}
           onMouseDown={start}
           onMouseMove={move}
