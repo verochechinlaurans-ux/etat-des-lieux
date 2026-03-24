@@ -88,6 +88,7 @@ function toDataUrl(file) {
 function SignaturePad({ label, value, onChange }) {
   const canvasRef = useRef(null);
   const drawing = useRef(false);
+  const lastPoint = useRef(null);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -97,8 +98,8 @@ function SignaturePad({ label, value, onChange }) {
     const width = canvas.parentElement.clientWidth;
     const height = 180;
 
-    canvas.width = width * ratio;
-    canvas.height = height * ratio;
+    canvas.width = Math.floor(width * ratio);
+    canvas.height = Math.floor(height * ratio);
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
@@ -120,62 +121,49 @@ function SignaturePad({ label, value, onChange }) {
 
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches?.[0];
-    const clientX = touch ? touch.clientX : e.clientX;
-    const clientY = touch ? touch.clientY : e.clientY;
-
     return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top,
     };
   };
 
-  const lockScroll = () => {
-    document.body.style.overflow = "hidden";
-    document.documentElement.style.overflow = "hidden";
-  };
-
-  const unlockScroll = () => {
-    document.body.style.overflow = "";
-    document.documentElement.style.overflow = "";
-  };
-
   const start = (e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     e.preventDefault();
-    e.stopPropagation();
-    lockScroll();
+    drawing.current = true;
+    canvas.setPointerCapture?.(e.pointerId);
 
     const { x, y } = getPos(e);
-    const ctx = canvasRef.current.getContext("2d");
+    lastPoint.current = { x, y };
+
+    const ctx = canvas.getContext("2d");
     ctx.beginPath();
     ctx.moveTo(x, y);
-    drawing.current = true;
   };
 
   const move = (e) => {
     if (!drawing.current) return;
+
     e.preventDefault();
-    e.stopPropagation();
 
     const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext("2d");
     ctx.lineTo(x, y);
     ctx.stroke();
+    lastPoint.current = { x, y };
   };
 
   const end = (e) => {
     if (!drawing.current) return;
-    e?.preventDefault?.();
-    e?.stopPropagation?.();
 
     drawing.current = false;
-    unlockScroll();
+    canvasRef.current?.releasePointerCapture?.(e.pointerId);
     onChange(canvasRef.current.toDataURL("image/png"));
   };
 
-  const clear = () => {
-    onChange("");
-  };
+  const clear = () => onChange("");
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -202,7 +190,6 @@ function SignaturePad({ label, value, onChange }) {
           borderRadius: 16,
           overflow: "hidden",
           background: "#fff",
-          touchAction: "none",
           WebkitUserSelect: "none",
           userSelect: "none",
         }}
@@ -215,14 +202,10 @@ function SignaturePad({ label, value, onChange }) {
             height: "180px",
             touchAction: "none",
           }}
-          onMouseDown={start}
-          onMouseMove={move}
-          onMouseUp={end}
-          onMouseLeave={end}
-          onTouchStart={start}
-          onTouchMove={move}
-          onTouchEnd={end}
-          onTouchCancel={end}
+          onPointerDown={start}
+          onPointerMove={move}
+          onPointerUp={end}
+          onPointerCancel={end}
         />
       </div>
     </div>
@@ -448,7 +431,7 @@ export default function Page() {
   };
 
   return (
-    <div style={{ minHeight: "100dvh", background: "#f8fafc", padding: 12 }}>
+<div style={{ background: "#f8fafc", padding: 12 }}>
       <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div style={{ background: "#fff", borderRadius: 24, padding: 16, boxShadow: "0 8px 24px rgba(0,0,0,.06)" }}>
           <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Version mobile terrain</div>
