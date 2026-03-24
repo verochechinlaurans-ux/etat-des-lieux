@@ -87,19 +87,20 @@ function toDataUrl(file) {
 
 function SignaturePad({ label, value, onChange }) {
   const canvasRef = useRef(null);
-  const drawing = useRef(false);
-  const lastPoint = useRef(null);
+  const isDrawing = useRef(false);
+  const hasDrawn = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const ratio = window.devicePixelRatio || 1;
-    const width = canvas.parentElement.clientWidth;
+    const parent = canvas.parentElement;
+    const width = parent.clientWidth;
     const height = 180;
+    const ratio = window.devicePixelRatio || 1;
 
-    canvas.width = Math.floor(width * ratio);
-    canvas.height = Math.floor(height * ratio);
+    canvas.width = width * ratio;
+    canvas.height = height * ratio;
     canvas.style.width = `${width}px`;
     canvas.style.height = `${height}px`;
 
@@ -114,56 +115,67 @@ function SignaturePad({ label, value, onChange }) {
 
     if (value) {
       const img = new Image();
-      img.onload = () => ctx.drawImage(img, 0, 0, width, height);
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, width, height);
+      };
       img.src = value;
     }
-  }, [value]);
+  }, []);
 
-  const getPos = (e) => {
+  const getPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches ? e.touches[0] : null;
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   };
 
   const start = (e) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     e.preventDefault();
-    drawing.current = true;
-    canvas.setPointerCapture?.(e.pointerId);
-
-    const { x, y } = getPos(e);
-    lastPoint.current = { x, y };
-
-    const ctx = canvas.getContext("2d");
+    const ctx = canvasRef.current.getContext("2d");
+    const { x, y } = getPoint(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
+    isDrawing.current = true;
+    hasDrawn.current = true;
   };
 
   const move = (e) => {
-    if (!drawing.current) return;
-
+    if (!isDrawing.current) return;
     e.preventDefault();
 
-    const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext("2d");
+    const { x, y } = getPoint(e);
     ctx.lineTo(x, y);
     ctx.stroke();
-    lastPoint.current = { x, y };
   };
 
-  const end = (e) => {
-    if (!drawing.current) return;
+  const end = () => {
+    if (!isDrawing.current) return;
+    isDrawing.current = false;
 
-    drawing.current = false;
-    canvasRef.current?.releasePointerCapture?.(e.pointerId);
-    onChange(canvasRef.current.toDataURL("image/png"));
+    if (hasDrawn.current) {
+      onChange(canvasRef.current.toDataURL("image/png"));
+    }
   };
 
-  const clear = () => onChange("");
+  const clear = () => {
+    const canvas = canvasRef.current;
+    const ctx = canvas.getContext("2d");
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    ctx.clearRect(0, 0, width, height);
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, width, height);
+
+    hasDrawn.current = false;
+    onChange("");
+  };
 
   return (
     <div style={{ marginTop: 12 }}>
@@ -176,7 +188,7 @@ function SignaturePad({ label, value, onChange }) {
             border: "1px solid #ddd",
             borderRadius: 10,
             padding: "6px 10px",
-            background: "#fff"
+            background: "#fff",
           }}
         >
           <RefreshCw size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
@@ -190,8 +202,6 @@ function SignaturePad({ label, value, onChange }) {
           borderRadius: 16,
           overflow: "hidden",
           background: "#fff",
-          WebkitUserSelect: "none",
-          userSelect: "none",
         }}
       >
         <canvas
@@ -202,15 +212,21 @@ function SignaturePad({ label, value, onChange }) {
             height: "180px",
             touchAction: "none",
           }}
-          onPointerDown={start}
-          onPointerMove={move}
-          onPointerUp={end}
-          onPointerCancel={end}
+          onMouseDown={start}
+          onMouseMove={move}
+          onMouseUp={end}
+          onMouseLeave={end}
+          onTouchStart={start}
+          onTouchMove={move}
+          onTouchEnd={end}
+          onTouchCancel={end}
         />
       </div>
     </div>
   );
 }
+
+
 function CheckItem({ check, onChange, onAddPhotos, onRemovePhoto }) {
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, background: "#fff", marginTop: 10 }}>
@@ -287,10 +303,13 @@ export default function Page() {
     }
   }, []);
 
-  useEffect(() => {
+useEffect(() => {
+  const timer = setTimeout(() => {
     localStorage.setItem("edl-mobile-simple", JSON.stringify(data));
-  }, [data]);
+  }, 300);
 
+  return () => clearTimeout(timer);
+}, [data]);
   const totalPhotos = useMemo(
     () =>
       data.rooms.reduce(
