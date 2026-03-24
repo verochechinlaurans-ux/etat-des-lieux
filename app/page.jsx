@@ -95,7 +95,7 @@ function SignaturePad({ label, value, onChange }) {
 
     const ratio = window.devicePixelRatio || 1;
     const width = canvas.parentElement.clientWidth;
-    const height = 140;
+    const height = 180;
 
     canvas.width = width * ratio;
     canvas.height = height * ratio;
@@ -121,12 +121,30 @@ function SignaturePad({ label, value, onChange }) {
   const getPos = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
     const touch = e.touches?.[0];
-    const x = (touch ? touch.clientX : e.clientX) - rect.left;
-    const y = (touch ? touch.clientY : e.clientY) - rect.top;
-    return { x, y };
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+
+    return {
+      x: clientX - rect.left,
+      y: clientY - rect.top,
+    };
+  };
+
+  const lockScroll = () => {
+    document.body.style.overflow = "hidden";
+    document.documentElement.style.overflow = "hidden";
+  };
+
+  const unlockScroll = () => {
+    document.body.style.overflow = "";
+    document.documentElement.style.overflow = "";
   };
 
   const start = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    lockScroll();
+
     const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext("2d");
     ctx.beginPath();
@@ -136,17 +154,27 @@ function SignaturePad({ label, value, onChange }) {
 
   const move = (e) => {
     if (!drawing.current) return;
-    if (e.touches) e.preventDefault();
+    e.preventDefault();
+    e.stopPropagation();
+
     const { x, y } = getPos(e);
     const ctx = canvasRef.current.getContext("2d");
     ctx.lineTo(x, y);
     ctx.stroke();
   };
 
-  const end = () => {
+  const end = (e) => {
     if (!drawing.current) return;
+    e?.preventDefault?.();
+    e?.stopPropagation?.();
+
     drawing.current = false;
+    unlockScroll();
     onChange(canvasRef.current.toDataURL("image/png"));
+  };
+
+  const clear = () => {
+    onChange("");
   };
 
   return (
@@ -155,17 +183,38 @@ function SignaturePad({ label, value, onChange }) {
         <strong>{label}</strong>
         <button
           type="button"
-          onClick={() => onChange("")}
-          style={{ border: "1px solid #ddd", borderRadius: 10, padding: "6px 10px", background: "#fff" }}
+          onClick={clear}
+          style={{
+            border: "1px solid #ddd",
+            borderRadius: 10,
+            padding: "6px 10px",
+            background: "#fff"
+          }}
         >
           <RefreshCw size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
           Effacer
         </button>
       </div>
-      <div style={{ border: "1px solid #ddd", borderRadius: 16, overflow: "hidden", background: "#fff" }}>
+
+      <div
+        style={{
+          border: "2px solid #d1d5db",
+          borderRadius: 16,
+          overflow: "hidden",
+          background: "#fff",
+          touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
+        }}
+      >
         <canvas
           ref={canvasRef}
-          style={{ display: "block", width: "100%", touchAction: "pan-y" }}
+          style={{
+            display: "block",
+            width: "100%",
+            height: "180px",
+            touchAction: "none",
+          }}
           onMouseDown={start}
           onMouseMove={move}
           onMouseUp={end}
@@ -173,12 +222,12 @@ function SignaturePad({ label, value, onChange }) {
           onTouchStart={start}
           onTouchMove={move}
           onTouchEnd={end}
+          onTouchCancel={end}
         />
       </div>
     </div>
   );
 }
-
 function CheckItem({ check, onChange, onAddPhotos, onRemovePhoto }) {
   return (
     <div style={{ border: "1px solid #e5e7eb", borderRadius: 18, padding: 14, background: "#fff", marginTop: 10 }}>
