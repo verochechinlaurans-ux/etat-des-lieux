@@ -135,7 +135,6 @@ function SignaturePad({ label, value, onChange }) {
   };
 
   const start = (e) => {
-    e.preventDefault();
     const ctx = canvasRef.current.getContext("2d");
     const { x, y } = getPoint(e);
     ctx.beginPath();
@@ -146,8 +145,7 @@ function SignaturePad({ label, value, onChange }) {
 
   const move = (e) => {
     if (!isDrawing.current) return;
-    e.preventDefault();
-
+  
     const ctx = canvasRef.current.getContext("2d");
     const { x, y } = getPoint(e);
     ctx.lineTo(x, y);
