@@ -87,16 +87,16 @@ function toDataUrl(file) {
 
 function SignaturePad({ label, value, onChange }) {
   const canvasRef = useRef(null);
+  const wrapperRef = useRef(null);
   const drawingRef = useRef(false);
+  const loadedValueRef = useRef("");
 
-  useEffect(() => {
+  const setupCanvas = () => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return null;
 
-    const parent = canvas.parentElement;
-    if (!parent) return;
-
-    const width = Math.max(parent.clientWidth, 280);
+    const width = Math.max(wrapper.clientWidth, 280);
     const height = 180;
     const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
@@ -106,7 +106,7 @@ function SignaturePad({ label, value, onChange }) {
     canvas.style.height = `${height}px`;
 
     const ctx = canvas.getContext("2d");
-    if (!ctx) return;
+    if (!ctx) return null;
 
     ctx.setTransform(1, 0, 0, 1, 0, 0);
     ctx.scale(ratio, ratio);
@@ -117,6 +117,17 @@ function SignaturePad({ label, value, onChange }) {
     ctx.lineJoin = "round";
     ctx.strokeStyle = "#111827";
 
+    return { canvas, ctx, width, height };
+  };
+
+  useEffect(() => {
+    const result = setupCanvas();
+    if (!result) return;
+
+    const { ctx, width, height } = result;
+
+    loadedValueRef.current = value || "";
+
     if (value) {
       const img = new Image();
       img.onload = () => {
@@ -126,77 +137,118 @@ function SignaturePad({ label, value, onChange }) {
     }
   }, [value]);
 
-  const getPoint = (e) => {
-    const rect = canvasRef.current.getBoundingClientRect();
-    const touch = e.touches?.[0] || e.changedTouches?.[0];
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-    const clientX = touch ? touch.clientX : e.clientX;
-    const clientY = touch ? touch.clientY : e.clientY;
+    const getPoint = (event) => {
+      const rect = canvas.getBoundingClientRect();
+      const touch = event.touches?.[0] || event.changedTouches?.[0];
 
-    return {
-      x: clientX - rect.left,
-      y: clientY - rect.top,
+      const clientX = touch ? touch.clientX : event.clientX;
+      const clientY = touch ? touch.clientY : event.clientY;
+
+      return {
+        x: clientX - rect.left,
+        y: clientY - rect.top,
+      };
     };
-  };
 
-  const startDrawing = (e) => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+    const start = (event) => {
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    e.preventDefault();
+      event.preventDefault();
 
-    const { x, y } = getPoint(e);
-    ctx.beginPath();
-    ctx.moveTo(x, y);
-    drawingRef.current = true;
-  };
+      const { x, y } = getPoint(event);
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+      drawingRef.current = true;
+    };
 
-  const draw = (e) => {
-    if (!drawingRef.current) return;
+    const move = (event) => {
+      if (!drawingRef.current) return;
 
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
 
-    e.preventDefault();
+      event.preventDefault();
 
-    const { x, y } = getPoint(e);
-    ctx.lineTo(x, y);
-    ctx.stroke();
-  };
+      const { x, y } = getPoint(event);
+      ctx.lineTo(x, y);
+      ctx.stroke();
+    };
 
-  const stopDrawing = (e) => {
-    if (!drawingRef.current) return;
-
-    e?.preventDefault?.();
-    drawingRef.current = false;
-
-    const canvas = canvasRef.current;
-    if (canvas) {
+    const end = (event) => {
+      if (!drawingRef.current) return;
+      event.preventDefault();
+      drawingRef.current = false;
       onChange(canvas.toDataURL("image/png"));
-    }
-  };
+    };
+
+    canvas.addEventListener("touchstart", start, { passive: false });
+    canvas.addEventListener("touchmove", move, { passive: false });
+    canvas.addEventListener("touchend", end, { passive: false });
+    canvas.addEventListener("touchcancel", end, { passive: false });
+
+    canvas.addEventListener("mousedown", start);
+    canvas.addEventListener("mousemove", move);
+    canvas.addEventListener("mouseup", end);
+    canvas.addEventListener("mouseleave", end);
+
+    return () => {
+      canvas.removeEventListener("touchstart", start);
+      canvas.removeEventListener("touchmove", move);
+      canvas.removeEventListener("touchend", end);
+      canvas.removeEventListener("touchcancel", end);
+
+      canvas.removeEventListener("mousedown", start);
+      canvas.removeEventListener("mousemove", move);
+      canvas.removeEventListener("mouseup", end);
+      canvas.removeEventListener("mouseleave", end);
+    };
+  }, [onChange]);
+
+  useEffect(() => {
+    const handleResize = () => {
+      const previousValue = loadedValueRef.current;
+      const result = setupCanvas();
+      if (!result) return;
+
+      const { ctx, width, height } = result;
+
+      if (previousValue) {
+        const img = new Image();
+        img.onload = () => {
+          ctx.drawImage(img, 0, 0, width, height);
+        };
+        img.src = previousValue;
+      }
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
 
   const clearSignature = () => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
-    if (!canvas || !ctx) return;
-
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-
-    ctx.clearRect(0, 0, width, height);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-
+    const result = setupCanvas();
+    if (!result) return;
+    loadedValueRef.current = "";
     drawingRef.current = false;
     onChange("");
   };
 
   return (
     <div style={{ marginTop: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          alignItems: "center",
+          gap: 12,
+          marginBottom: 8,
+        }}
+      >
         <strong>{label}</strong>
         <button type="button" onClick={clearSignature} style={secondaryButtonStyle}>
           <RefreshCw size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
@@ -205,12 +257,15 @@ function SignaturePad({ label, value, onChange }) {
       </div>
 
       <div
+        ref={wrapperRef}
         style={{
           border: "2px solid #d1d5db",
           borderRadius: 16,
           overflow: "hidden",
           background: "#fff",
           touchAction: "none",
+          WebkitUserSelect: "none",
+          userSelect: "none",
         }}
       >
         <canvas
@@ -222,14 +277,6 @@ function SignaturePad({ label, value, onChange }) {
             background: "#fff",
             touchAction: "none",
           }}
-          onMouseDown={startDrawing}
-          onMouseMove={draw}
-          onMouseUp={stopDrawing}
-          onMouseLeave={stopDrawing}
-          onTouchStart={startDrawing}
-          onTouchMove={draw}
-          onTouchEnd={stopDrawing}
-          onTouchCancel={stopDrawing}
         />
       </div>
     </div>
