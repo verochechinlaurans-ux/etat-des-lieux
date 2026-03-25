@@ -88,7 +88,6 @@ function toDataUrl(file) {
 function SignaturePad({ label, value, onChange }) {
   const canvasRef = useRef(null);
   const drawingRef = useRef(false);
-  const hasDrawnRef = useRef(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -129,9 +128,14 @@ function SignaturePad({ label, value, onChange }) {
 
   const getPoint = (e) => {
     const rect = canvasRef.current.getBoundingClientRect();
+    const touch = e.touches?.[0] || e.changedTouches?.[0];
+
+    const clientX = touch ? touch.clientX : e.clientX;
+    const clientY = touch ? touch.clientY : e.clientY;
+
     return {
-      x: e.clientX - rect.left,
-      y: e.clientY - rect.top,
+      x: clientX - rect.left,
+      y: clientY - rect.top,
     };
   };
 
@@ -142,17 +146,10 @@ function SignaturePad({ label, value, onChange }) {
 
     e.preventDefault();
 
-    if (canvas.setPointerCapture) {
-      try {
-        canvas.setPointerCapture(e.pointerId);
-      } catch {}
-    }
-
     const { x, y } = getPoint(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
     drawingRef.current = true;
-    hasDrawnRef.current = true;
   };
 
   const draw = (e) => {
@@ -172,16 +169,11 @@ function SignaturePad({ label, value, onChange }) {
   const stopDrawing = (e) => {
     if (!drawingRef.current) return;
 
+    e?.preventDefault?.();
     drawingRef.current = false;
 
     const canvas = canvasRef.current;
-    if (canvas && typeof e?.pointerId !== "undefined" && canvas.releasePointerCapture) {
-      try {
-        canvas.releasePointerCapture(e.pointerId);
-      } catch {}
-    }
-
-    if (hasDrawnRef.current && canvas) {
+    if (canvas) {
       onChange(canvas.toDataURL("image/png"));
     }
   };
@@ -199,7 +191,6 @@ function SignaturePad({ label, value, onChange }) {
     ctx.fillRect(0, 0, width, height);
 
     drawingRef.current = false;
-    hasDrawnRef.current = false;
     onChange("");
   };
 
@@ -231,11 +222,14 @@ function SignaturePad({ label, value, onChange }) {
             background: "#fff",
             touchAction: "none",
           }}
-          onPointerDown={startDrawing}
-          onPointerMove={draw}
-          onPointerUp={stopDrawing}
-          onPointerCancel={stopDrawing}
-          onPointerLeave={stopDrawing}
+          onMouseDown={startDrawing}
+          onMouseMove={draw}
+          onMouseUp={stopDrawing}
+          onMouseLeave={stopDrawing}
+          onTouchStart={startDrawing}
+          onTouchMove={draw}
+          onTouchEnd={stopDrawing}
+          onTouchCancel={stopDrawing}
         />
       </div>
     </div>
