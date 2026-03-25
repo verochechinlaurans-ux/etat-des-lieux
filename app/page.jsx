@@ -246,6 +246,10 @@ function SignatureModal({ open, title, initialValue, onClose, onSave }) {
   if (!open) return null;
 
   return (
+
+<div style={{ background: "red", color: "white", padding: 10, fontWeight: "bold" }}>
+  VERSION TEST IPHONE
+
     <div
       style={modalOverlayStyle}
       onClick={onClose}
