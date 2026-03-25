@@ -85,16 +85,10 @@ function toDataUrl(file) {
   });
 }
 
-function SignatureModal({ open, title, initialValue, onClose, onSave }) {
+function SignaturePadModal({ open, title, value, onClose, onSave }) {
   const canvasRef = useRef(null);
   const wrapperRef = useRef(null);
-  const isDrawingRef = useRef(false);
-  const [draftValue, setDraftValue] = useState(initialValue || "");
-
-  useEffect(() => {
-    if (!open) return;
-    setDraftValue(initialValue || "");
-  }, [open, initialValue]);
+  const drawingRef = useRef(false);
 
   useEffect(() => {
     if (!open) return;
@@ -114,58 +108,39 @@ function SignatureModal({ open, title, initialValue, onClose, onSave }) {
   useEffect(() => {
     if (!open) return;
 
-    const setupCanvas = () => {
-      const canvas = canvasRef.current;
-      const wrapper = wrapperRef.current;
-      if (!canvas || !wrapper) return;
+    const canvas = canvasRef.current;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
 
-      const ratio = Math.max(window.devicePixelRatio || 1, 1);
-      const width = Math.max(wrapper.clientWidth, 280);
-      const height = 260;
+    const width = Math.max(wrapper.clientWidth, 280);
+    const height = 240;
+    const ratio = Math.max(window.devicePixelRatio || 1, 1);
 
-      canvas.width = Math.floor(width * ratio);
-      canvas.height = Math.floor(height * ratio);
-      canvas.style.width = `${width}px`;
-      canvas.style.height = `${height}px`;
+    canvas.width = Math.floor(width * ratio);
+    canvas.height = Math.floor(height * ratio);
+    canvas.style.width = `${width}px`;
+    canvas.style.height = `${height}px`;
 
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
 
-      ctx.setTransform(1, 0, 0, 1, 0, 0);
-      ctx.scale(ratio, ratio);
-      ctx.fillStyle = "#ffffff";
-      ctx.fillRect(0, 0, width, height);
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = "round";
-      ctx.lineJoin = "round";
-      ctx.strokeStyle = "#111827";
+    ctx.setTransform(1, 0, 0, 1, 0, 0);
+    ctx.scale(ratio, ratio);
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    ctx.lineWidth = 2.2;
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    ctx.strokeStyle = "#111827";
 
-      if (draftValue) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, width, height);
-        };
-        img.src = draftValue;
-      }
-    };
-
-    setupCanvas();
-
-    let resizeObserver;
-    if (typeof ResizeObserver !== "undefined" && wrapperRef.current) {
-      resizeObserver = new ResizeObserver(() => {
-        setupCanvas();
-      });
-      resizeObserver.observe(wrapperRef.current);
-    } else {
-      window.addEventListener("resize", setupCanvas);
+    if (value) {
+      const img = new Image();
+      img.onload = () => {
+        ctx.drawImage(img, 0, 0, width, height);
+      };
+      img.src = value;
     }
-
-    return () => {
-      resizeObserver?.disconnect();
-      window.removeEventListener("resize", setupCanvas);
-    };
-  }, [open, draftValue]);
+  }, [open, value]);
 
   const getPoint = (e) => {
     const canvas = canvasRef.current;
@@ -176,57 +151,54 @@ function SignatureModal({ open, title, initialValue, onClose, onSave }) {
     };
   };
 
-  const handlePointerDown = (e) => {
+  const startDrawing = (e) => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas ? canvas.getContext("2d") : null;
     if (!canvas || !ctx) return;
 
     e.preventDefault();
-    canvas.setPointerCapture?.(e.pointerId);
+    if (canvas.setPointerCapture) {
+      canvas.setPointerCapture(e.pointerId);
+    }
 
     const { x, y } = getPoint(e);
     ctx.beginPath();
     ctx.moveTo(x, y);
-    isDrawingRef.current = true;
+    drawingRef.current = true;
   };
 
-  const handlePointerMove = (e) => {
-    if (!isDrawingRef.current) return;
+  const draw = (e) => {
+    if (!drawingRef.current) return;
 
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas ? canvas.getContext("2d") : null;
     if (!canvas || !ctx) return;
 
     e.preventDefault();
-
     const { x, y } = getPoint(e);
     ctx.lineTo(x, y);
     ctx.stroke();
   };
 
-  const finishDrawing = (e) => {
-    if (!isDrawingRef.current) return;
+  const stopDrawing = (e) => {
+    if (!drawingRef.current) return;
 
     const canvas = canvasRef.current;
-    isDrawingRef.current = false;
+    drawingRef.current = false;
 
-    if (canvas && typeof e?.pointerId !== "undefined") {
-      canvas.releasePointerCapture?.(e.pointerId);
+    if (canvas && typeof e?.pointerId !== "undefined" && canvas.releasePointerCapture) {
+      canvas.releasePointerCapture(e.pointerId);
     }
   };
 
   const clearSignature = () => {
     const canvas = canvasRef.current;
-    const ctx = canvas?.getContext("2d");
+    const ctx = canvas ? canvas.getContext("2d") : null;
     if (!canvas || !ctx) return;
 
-    const width = canvas.clientWidth;
-    const height = canvas.clientHeight;
-
-    ctx.clearRect(0, 0, width, height);
+    ctx.clearRect(0, 0, canvas.clientWidth, canvas.clientHeight);
     ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-    setDraftValue("");
+    ctx.fillRect(0, 0, canvas.clientWidth, canvas.clientHeight);
   };
 
   const saveSignature = () => {
@@ -237,27 +209,17 @@ function SignatureModal({ open, title, initialValue, onClose, onSave }) {
       return;
     }
 
-    const dataUrl = canvas.toDataURL("image/png");
-    setDraftValue(dataUrl);
-    onSave(dataUrl);
+    onSave(canvas.toDataURL("image/png"));
     onClose();
   };
 
-  if (!open) return null;
+  if (!open) {
+    return null;
+  }
 
   return (
-
-<div style={{ background: "red", color: "white", padding: 10, fontWeight: "bold" }}>
-  VERSION TEST IPHONE
-
-    <div
-      style={modalOverlayStyle}
-      onClick={onClose}
-    >
-      <div
-        style={modalCardStyle}
-        onClick={(e) => e.stopPropagation()}
-      >
+    <div style={modalOverlayStyle} onClick={onClose}>
+      <div style={modalCardStyle} onClick={(e) => e.stopPropagation()}>
         <div style={{ marginBottom: 12 }}>
           <div style={{ fontSize: 22, fontWeight: 700, marginBottom: 6 }}>{title}</div>
           <div style={{ color: "#6b7280", fontSize: 14 }}>
@@ -279,15 +241,15 @@ function SignatureModal({ open, title, initialValue, onClose, onSave }) {
             style={{
               display: "block",
               width: "100%",
-              height: 260,
+              height: "240px",
               background: "#fff",
               touchAction: "none",
             }}
-            onPointerDown={handlePointerDown}
-            onPointerMove={handlePointerMove}
-            onPointerUp={finishDrawing}
-            onPointerCancel={finishDrawing}
-            onPointerLeave={finishDrawing}
+            onPointerDown={startDrawing}
+            onPointerMove={draw}
+            onPointerUp={stopDrawing}
+            onPointerCancel={stopDrawing}
+            onPointerLeave={stopDrawing}
           />
         </div>
 
@@ -316,13 +278,17 @@ function SignatureField({ label, value, onChange }) {
   return (
     <>
       <div style={{ marginTop: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 12, marginBottom: 8 }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            gap: 12,
+            marginBottom: 8,
+          }}
+        >
           <strong>{label}</strong>
-          <button
-            type="button"
-            onClick={() => setOpen(true)}
-            style={secondaryButtonStyle}
-          >
+          <button type="button" onClick={() => setOpen(true)} style={secondaryButtonStyle}>
             {value ? "Modifier" : "Signer"}
           </button>
         </div>
@@ -367,10 +333,10 @@ function SignatureField({ label, value, onChange }) {
         </div>
       </div>
 
-      <SignatureModal
+      <SignaturePadModal
         open={open}
         title={label}
-        initialValue={value}
+        value={value}
         onClose={() => setOpen(false)}
         onSave={onChange}
       />
@@ -389,12 +355,26 @@ function CheckItem({ check, onChange, onAddPhotos, onRemovePhoto }) {
         marginTop: 10,
       }}
     >
-      <div style={{ display: "flex", justifyContent: "space-between", gap: 12, alignItems: "start" }}>
+      <div
+        style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 12,
+          alignItems: "start",
+        }}
+      >
         <div>
           <div style={{ fontWeight: 600 }}>{check.label}</div>
           <div style={{ fontSize: 13, color: "#6b7280" }}>État, réserve et photos</div>
         </div>
-        <div style={{ fontSize: 12, padding: "4px 8px", borderRadius: 999, background: "#f3f4f6" }}>
+        <div
+          style={{
+            fontSize: 12,
+            padding: "4px 8px",
+            borderRadius: 999,
+            background: "#f3f4f6",
+          }}
+        >
           {check.condition}
         </div>
       </div>
@@ -586,9 +566,7 @@ export default function Page() {
           : {
               ...room,
               [section]: room[section].map((check) =>
-                check.id === checkId
-                  ? { ...check, photos: [...check.photos, ...imgs] }
-                  : check
+                check.id === checkId ? { ...check, photos: [...check.photos, ...imgs] } : check
               ),
             }
       ),
@@ -704,6 +682,18 @@ export default function Page() {
         overscrollBehavior: "contain",
       }}
     >
+      <div
+        style={{
+          background: "red",
+          color: "white",
+          padding: 10,
+          fontWeight: "bold",
+          marginBottom: 12,
+        }}
+      >
+        VERSION TEST IPHONE
+      </div>
+
       <div style={{ maxWidth: 760, margin: "0 auto" }}>
         <div style={cardStyle}>
           <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Version mobile terrain</div>
