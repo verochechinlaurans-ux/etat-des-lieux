@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useEffect, useMemo, useRef, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { jsPDF } from "jspdf";
-import { Camera, Download, Plus, RefreshCw, Trash2 } from "lucide-react";
+import { Camera, Download, Plus, Trash2 } from "lucide-react";
 
 const roomsTemplate = [
   {
@@ -63,9 +63,8 @@ function createData() {
     arrivalDate: "",
     departureDate: "",
     generalReserve: "",
-    tenantValidation: "",
-    hostSignature: "",
-    tenantSignature: "",
+    tenantValidationText: "",
+    tenantAccepted: false,
     rooms: roomsTemplate.map((room) => ({
       ...room,
       structureChecks: makeChecks(room.structure),
@@ -83,204 +82,6 @@ function toDataUrl(file) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-function SignaturePad({ label, value, onChange }) {
-  const canvasRef = useRef(null);
-  const wrapperRef = useRef(null);
-  const drawingRef = useRef(false);
-  const loadedValueRef = useRef("");
-
-  const setupCanvas = () => {
-    const canvas = canvasRef.current;
-    const wrapper = wrapperRef.current;
-    if (!canvas || !wrapper) return null;
-
-    const width = Math.max(wrapper.clientWidth, 280);
-    const height = 180;
-    const ratio = Math.max(window.devicePixelRatio || 1, 1);
-
-    canvas.width = Math.floor(width * ratio);
-    canvas.height = Math.floor(height * ratio);
-    canvas.style.width = `${width}px`;
-    canvas.style.height = `${height}px`;
-
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return null;
-
-    ctx.setTransform(1, 0, 0, 1, 0, 0);
-    ctx.scale(ratio, ratio);
-    ctx.fillStyle = "#ffffff";
-    ctx.fillRect(0, 0, width, height);
-    ctx.lineWidth = 2.2;
-    ctx.lineCap = "round";
-    ctx.lineJoin = "round";
-    ctx.strokeStyle = "#111827";
-
-    return { canvas, ctx, width, height };
-  };
-
-  useEffect(() => {
-    const result = setupCanvas();
-    if (!result) return;
-
-    const { ctx, width, height } = result;
-
-    loadedValueRef.current = value || "";
-
-    if (value) {
-      const img = new Image();
-      img.onload = () => {
-        ctx.drawImage(img, 0, 0, width, height);
-      };
-      img.src = value;
-    }
-  }, [value]);
-
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
-    const getPoint = (event) => {
-      const rect = canvas.getBoundingClientRect();
-      const touch = event.touches?.[0] || event.changedTouches?.[0];
-
-      const clientX = touch ? touch.clientX : event.clientX;
-      const clientY = touch ? touch.clientY : event.clientY;
-
-      return {
-        x: clientX - rect.left,
-        y: clientY - rect.top,
-      };
-    };
-
-    const start = (event) => {
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      event.preventDefault();
-
-      const { x, y } = getPoint(event);
-      ctx.beginPath();
-      ctx.moveTo(x, y);
-      drawingRef.current = true;
-    };
-
-    const move = (event) => {
-      if (!drawingRef.current) return;
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-
-      event.preventDefault();
-
-      const { x, y } = getPoint(event);
-      ctx.lineTo(x, y);
-      ctx.stroke();
-    };
-
-    const end = (event) => {
-      if (!drawingRef.current) return;
-      event.preventDefault();
-      drawingRef.current = false;
-      onChange(canvas.toDataURL("image/png"));
-    };
-
-    canvas.addEventListener("touchstart", start, { passive: false });
-    canvas.addEventListener("touchmove", move, { passive: false });
-    canvas.addEventListener("touchend", end, { passive: false });
-    canvas.addEventListener("touchcancel", end, { passive: false });
-
-    canvas.addEventListener("mousedown", start);
-    canvas.addEventListener("mousemove", move);
-    canvas.addEventListener("mouseup", end);
-    canvas.addEventListener("mouseleave", end);
-
-    return () => {
-      canvas.removeEventListener("touchstart", start);
-      canvas.removeEventListener("touchmove", move);
-      canvas.removeEventListener("touchend", end);
-      canvas.removeEventListener("touchcancel", end);
-
-      canvas.removeEventListener("mousedown", start);
-      canvas.removeEventListener("mousemove", move);
-      canvas.removeEventListener("mouseup", end);
-      canvas.removeEventListener("mouseleave", end);
-    };
-  }, [onChange]);
-
-  useEffect(() => {
-    const handleResize = () => {
-      const previousValue = loadedValueRef.current;
-      const result = setupCanvas();
-      if (!result) return;
-
-      const { ctx, width, height } = result;
-
-      if (previousValue) {
-        const img = new Image();
-        img.onload = () => {
-          ctx.drawImage(img, 0, 0, width, height);
-        };
-        img.src = previousValue;
-      }
-    };
-
-    window.addEventListener("resize", handleResize);
-    return () => window.removeEventListener("resize", handleResize);
-  }, []);
-
-  const clearSignature = () => {
-    const result = setupCanvas();
-    if (!result) return;
-    loadedValueRef.current = "";
-    drawingRef.current = false;
-    onChange("");
-  };
-
-  return (
-    <div style={{ marginTop: 12 }}>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 8,
-        }}
-      >
-        <strong>{label}</strong>
-        <button type="button" onClick={clearSignature} style={secondaryButtonStyle}>
-          <RefreshCw size={14} style={{ verticalAlign: "middle", marginRight: 6 }} />
-          Effacer
-        </button>
-      </div>
-
-      <div
-        ref={wrapperRef}
-        style={{
-          border: "2px solid #d1d5db",
-          borderRadius: 16,
-          overflow: "hidden",
-          background: "#fff",
-          touchAction: "none",
-          WebkitUserSelect: "none",
-          userSelect: "none",
-        }}
-      >
-        <canvas
-          ref={canvasRef}
-          style={{
-            display: "block",
-            width: "100%",
-            height: "180px",
-            background: "#fff",
-            touchAction: "none",
-          }}
-        />
-      </div>
-    </div>
-  );
 }
 
 function CheckItem({ check, onChange, onAddPhotos, onRemovePhoto }) {
@@ -444,7 +245,7 @@ export default function Page() {
 
   useEffect(() => {
     try {
-      const saved = localStorage.getItem("edl-mobile-simple");
+      const saved = localStorage.getItem("edl-mobile-simple-no-signature");
       if (saved) {
         setData(JSON.parse(saved));
       }
@@ -454,7 +255,7 @@ export default function Page() {
   useEffect(() => {
     const timer = setTimeout(() => {
       try {
-        localStorage.setItem("edl-mobile-simple", JSON.stringify(data));
+        localStorage.setItem("edl-mobile-simple-no-signature", JSON.stringify(data));
       } catch {}
     }, 300);
 
@@ -557,7 +358,7 @@ export default function Page() {
     }));
   };
 
-  const exportPdf = () => {
+  const buildPdf = () => {
     const doc = new jsPDF();
     let y = 15;
 
@@ -573,10 +374,24 @@ export default function Page() {
     doc.text(`Gestionnaire : ${data.manager || "-"}`, 10, y);
     y += 8;
     doc.text(`Séjour : ${data.arrivalDate || "-"} -> ${data.departureDate || "-"}`, 10, y);
+    y += 8;
+    doc.text(`Validation locataire : ${data.tenantAccepted ? "Oui" : "Non"}`, 10, y);
     y += 10;
 
+    if (data.generalReserve) {
+      const lines = doc.splitTextToSize(`Réserves générales : ${data.generalReserve}`, 180);
+      doc.text(lines, 10, y);
+      y += lines.length * 5 + 4;
+    }
+
+    if (data.tenantValidationText) {
+      const lines = doc.splitTextToSize(`Commentaire validation locataire : ${data.tenantValidationText}`, 180);
+      doc.text(lines, 10, y);
+      y += lines.length * 5 + 6;
+    }
+
     data.rooms.forEach((room) => {
-      if (y > 260) {
+      if (y > 250) {
         doc.addPage();
         y = 15;
       }
@@ -594,7 +409,7 @@ export default function Page() {
       });
 
       if (room.globalNote) {
-        const lines = doc.splitTextToSize(`Note: ${room.globalNote}`, 180);
+        const lines = doc.splitTextToSize(`Note : ${room.globalNote}`, 180);
         doc.text(lines, 14, y);
         y += lines.length * 5 + 3;
       }
@@ -602,7 +417,32 @@ export default function Page() {
       y += 4;
     });
 
+    return doc;
+  };
+
+  const exportPdf = () => {
+    const doc = buildPdf();
     doc.save("etat-des-lieux.pdf");
+  };
+
+  const validateAndPrepareEmail = () => {
+    if (!data.tenantAccepted) {
+      alert("Veuillez cocher la validation du locataire avant de préparer l'envoi.");
+      return;
+    }
+
+    const doc = buildPdf();
+    doc.save("etat-des-lieux.pdf");
+
+    const subject = encodeURIComponent(
+      `État des lieux - ${data.villa} - ${data.guest || "Locataire"}`
+    );
+
+    const body = encodeURIComponent(
+      `Bonjour,\n\nVeuillez trouver ci-joint l'état des lieux.\n\nBien : ${data.villa}\nLocataire : ${data.guest || "-"}\nGestionnaire : ${data.manager || "-"}\nSéjour : ${data.arrivalDate || "-"} -> ${data.departureDate || "-"}\nValidation locataire : Oui\n\nMerci.`
+    );
+
+    window.location.href = `mailto:veronique@cleide.fr?subject=${subject}&body=${body}`;
   };
 
   return (
@@ -618,7 +458,7 @@ export default function Page() {
         <div style={cardStyle}>
           <div style={{ fontSize: 13, color: "#6b7280", marginBottom: 8 }}>Version mobile terrain</div>
           <h1 style={{ fontSize: 28, lineHeight: 1.1, margin: 0 }}>État des lieux mobile</h1>
-          <p style={{ color: "#6b7280" }}>Version simplifiée pour un usage fiable dans la maison.</p>
+          <p style={{ color: "#6b7280" }}>Version sans signature, optimisée pour un usage fiable sur iPhone.</p>
 
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, marginTop: 12 }}>
             <div style={{ background: "#f8fafc", borderRadius: 16, padding: 12 }}>
@@ -700,31 +540,35 @@ export default function Page() {
             </div>
 
             <div>
-              <label style={labelStyle}>Validation locataire</label>
+              <label style={labelStyle}>Commentaire de validation locataire</label>
               <textarea
-                value={data.tenantValidation}
-                onChange={(e) => setData((prev) => ({ ...prev, tenantValidation: e.target.value }))}
+                value={data.tenantValidationText}
+                onChange={(e) => setData((prev) => ({ ...prev, tenantValidationText: e.target.value }))}
                 rows={4}
                 style={inputStyle}
               />
             </div>
+
+            <label
+              style={{
+                display: "flex",
+                alignItems: "start",
+                gap: 10,
+                background: "#f8fafc",
+                borderRadius: 14,
+                padding: 12,
+                fontSize: 15,
+              }}
+            >
+              <input
+                type="checkbox"
+                checked={data.tenantAccepted}
+                onChange={(e) => setData((prev) => ({ ...prev, tenantAccepted: e.target.checked }))}
+                style={{ marginTop: 3, transform: "scale(1.2)" }}
+              />
+              <span>Le locataire valide l’inventaire et reconnaît l’état des lieux ci-dessus.</span>
+            </label>
           </div>
-        </div>
-
-        <div style={{ ...cardStyle, marginTop: 14 }}>
-          <h2 style={{ marginTop: 0 }}>Signatures</h2>
-
-          <SignaturePad
-            label="Signature gestionnaire"
-            value={data.hostSignature}
-            onChange={(v) => setData((prev) => ({ ...prev, hostSignature: v }))}
-          />
-
-          <SignaturePad
-            label="Signature locataire"
-            value={data.tenantSignature}
-            onChange={(v) => setData((prev) => ({ ...prev, tenantSignature: v }))}
-          />
         </div>
 
         <div style={{ marginTop: 14 }}>
@@ -792,24 +636,42 @@ export default function Page() {
           ))}
         </div>
 
-        <button
-          type="button"
-          onClick={exportPdf}
-          style={{
-            width: "100%",
-            border: 0,
-            borderRadius: 18,
-            background: "#111827",
-            color: "#fff",
-            padding: 14,
-            fontSize: 16,
-            fontWeight: 600,
-            marginBottom: 30,
-          }}
-        >
-          <Download size={16} style={{ verticalAlign: "middle", marginRight: 8 }} />
-          Export PDF
-        </button>
+        <div style={{ display: "grid", gap: 10, marginBottom: 30 }}>
+          <button
+            type="button"
+            onClick={exportPdf}
+            style={{
+              width: "100%",
+              border: 0,
+              borderRadius: 18,
+              background: "#111827",
+              color: "#fff",
+              padding: 14,
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+          >
+            <Download size={16} style={{ verticalAlign: "middle", marginRight: 8 }} />
+            Export PDF
+          </button>
+
+          <button
+            type="button"
+            onClick={validateAndPrepareEmail}
+            style={{
+              width: "100%",
+              border: 0,
+              borderRadius: 18,
+              background: "#2563eb",
+              color: "#fff",
+              padding: 14,
+              fontSize: 16,
+              fontWeight: 600,
+            }}
+          >
+            Valider et préparer l’envoi email
+          </button>
+        </div>
       </div>
     </div>
   );
